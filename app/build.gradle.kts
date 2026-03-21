@@ -1,8 +1,13 @@
+import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
+import org.gradle.testing.jacoco.tasks.JacocoReport
+
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
+    jacoco
 }
 
 android {
@@ -20,6 +25,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            enableUnitTestCoverage = true
+            enableAndroidTestCoverage = true
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -32,8 +41,94 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    kotlinOptions {
+        jvmTarget = "11"
+    }
     buildFeatures {
         compose = true
+    }
+    testOptions {
+        animationsDisabled = true
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
+}
+
+jacoco {
+    toolVersion = libs.versions.jacoco.get()
+}
+
+val jacocoExcludes = listOf(
+    "**/R.class",
+    "**/R$*.class",
+    "**/BuildConfig.*",
+    "**/Manifest*.*",
+    "**/*Test*.*",
+    "**/*_Impl*.*",
+    "**/*_Factory*.*",
+    "**/*_Provide*Factory*.*",
+    "**/*_HiltModules*.*",
+    "**/*Hilt*.*",
+    "**/MainActivity*.*",
+    "**/ShoppListApplication*.*",
+    "**/DebugCommandReceiver*.*",
+    "**/hilt_aggregated_deps/**",
+    "**/*ComposableSingletons*.*"
+)
+
+val debugTree = fileTree("$buildDir/tmp/kotlin-classes/debug") {
+    exclude(jacocoExcludes)
+}
+
+val debugJavaTree = fileTree("$buildDir/intermediates/javac/debug/compileDebugJavaWithJavac/classes") {
+    exclude(jacocoExcludes)
+}
+
+tasks.register<JacocoReport>("jacocoFullReport") {
+    dependsOn("testDebugUnitTest", "connectedDebugAndroidTest")
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+
+    classDirectories.setFrom(files(debugTree, debugJavaTree))
+    sourceDirectories.setFrom(files("src/main/java"))
+    executionData.setFrom(
+        fileTree(buildDir) {
+            include(
+                "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
+                "outputs/code_coverage/**/connected/**/*.ec",
+                "outputs/managed_device_code_coverage/**/*.ec",
+                "**/*.ec"
+            )
+        }
+    )
+}
+
+tasks.register<JacocoCoverageVerification>("verifyDebugCoverage") {
+    dependsOn("jacocoFullReport")
+
+    classDirectories.setFrom(files(debugTree, debugJavaTree))
+    sourceDirectories.setFrom(files("src/main/java"))
+    executionData.setFrom(
+        fileTree(buildDir) {
+            include(
+                "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
+                "outputs/code_coverage/**/connected/**/*.ec",
+                "outputs/managed_device_code_coverage/**/*.ec",
+                "**/*.ec"
+            )
+        }
+    )
+
+    violationRules {
+        rule {
+            limit {
+                minimum = "0.85".toBigDecimal()
+            }
+        }
     }
 }
 
@@ -57,6 +152,8 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     ksp(libs.hilt.android.compiler)
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.app.cash.turbine)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

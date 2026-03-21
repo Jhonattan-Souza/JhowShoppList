@@ -7,11 +7,9 @@ import android.content.Intent
 import android.util.Log
 import com.jhow.shopplist.data.local.db.AppDatabase
 import com.jhow.shopplist.data.local.entity.ShoppingItemEntity
+import com.jhow.shopplist.di.DatabaseEntryPoint
 import com.jhow.shopplist.domain.model.SyncStatus
-import dagger.hilt.EntryPoint
-import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
-import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -23,7 +21,7 @@ class DebugCommandReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             val database = EntryPointAccessors.fromApplication(
                 context.applicationContext,
-                DebugDatabaseEntryPoint::class.java
+                DatabaseEntryPoint::class.java
             ).database()
 
             val response = when (intent.action) {
@@ -92,13 +90,6 @@ class DebugCommandReceiver : BroadcastReceiver() {
             )
         )
     }
-
-    @EntryPoint
-    @InstallIn(SingletonComponent::class)
-    interface DebugDatabaseEntryPoint {
-        fun database(): AppDatabase
-    }
-
     companion object {
         const val ACTION_RESET_DB: String = "com.jhow.shopplist.debug.RESET_DB"
         const val ACTION_SEED_SAMPLE: String = "com.jhow.shopplist.debug.SEED_SAMPLE"
