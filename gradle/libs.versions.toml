@@ -9,6 +9,7 @@ activityCompose = "1.12.4"
 kotlin = "2.2.10"
 composeBom = "2024.09.00"
 coroutines = "1.10.2"
+coroutinesTest = "1.10.2"
 lifecycleViewModelCompose = "2.10.0"
 lifecycleRuntimeCompose = "2.10.0"
 materialIconsExtended = "1.7.8"
@@ -16,6 +17,8 @@ room = "2.7.2"
 hilt = "2.57"
 hiltNavigationCompose = "1.3.0"
 ksp = "2.2.10-2.0.2"
+turbine = "1.2.1"
+jacoco = "0.8.13"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -39,9 +42,11 @@ androidx-room-runtime = { group = "androidx.room", name = "room-runtime", versio
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesTest" }
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-android-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
 androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
+app-cash-turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

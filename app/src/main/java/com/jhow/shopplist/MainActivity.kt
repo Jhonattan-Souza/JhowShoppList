@@ -7,7 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.jhow.shopplist.presentation.shoppinglist.ShoppingListRoute
 import com.jhow.shopplist.ui.theme.JhowShoppListTheme
 import dagger.hilt.android.AndroidEntryPoint

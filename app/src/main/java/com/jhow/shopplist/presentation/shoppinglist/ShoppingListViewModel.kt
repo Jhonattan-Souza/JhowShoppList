@@ -36,15 +36,16 @@ class ShoppingListViewModel @Inject constructor(
         selectedIds
     ) { pendingItems, purchasedItems, currentInput, currentSelection ->
         val pendingIds = pendingItems.mapTo(linkedSetOf(), transform = { it.id })
+        val distinctPurchasedItems = purchasedItems.filterNot { it.id in pendingIds }
         ShoppingListUiState(
             inputValue = currentInput,
             pendingItems = pendingItems,
-            purchasedItems = purchasedItems,
+            purchasedItems = distinctPurchasedItems,
             selectedIds = currentSelection.intersect(pendingIds)
         )
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000),
+        started = SharingStarted.Eagerly,
         initialValue = ShoppingListUiState()
     )
 
@@ -69,7 +70,7 @@ class ShoppingListViewModel @Inject constructor(
     }
 
     fun onPurchaseSelectedItems() {
-        val ids = uiState.value.selectedIds
+        val ids = selectedIds.value
         if (ids.isEmpty()) return
 
         viewModelScope.launch {
