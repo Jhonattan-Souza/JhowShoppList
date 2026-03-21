@@ -1,0 +1,16 @@
+package com.jhow.shopplist.domain.repository
+
+import com.jhow.shopplist.domain.model.ShoppingItem
+import kotlinx.coroutines.flow.Flow
+
+interface ShoppingListRepository {
+    fun observePendingItems(): Flow<List<ShoppingItem>>
+
+    fun observePurchasedItems(): Flow<List<ShoppingItem>>
+
+    suspend fun addItem(name: String)
+
+    suspend fun markItemsPurchased(ids: Set<String>)
+
+    suspend fun markItemPending(id: String)
+}
