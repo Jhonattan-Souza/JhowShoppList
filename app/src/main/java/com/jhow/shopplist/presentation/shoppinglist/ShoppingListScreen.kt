@@ -500,9 +500,9 @@ private fun ShoppingItemRow(
             .alpha(rowAlpha)
             .clip(RoundedCornerShape(18.dp))
             .background(containerColor)
-            .clickable(onClick = onClick)
             .heightIn(min = 56.dp)
-            .padding(start = 16.dp, end = 4.dp),
+            .padding(start = 16.dp, end = 4.dp)
+            .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(

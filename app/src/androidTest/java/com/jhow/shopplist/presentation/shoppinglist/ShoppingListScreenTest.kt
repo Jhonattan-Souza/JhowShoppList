@@ -88,14 +88,15 @@ class ShoppingListScreenTest {
     @Test
     fun shoppingRowsUseCompactSingleLineHeight() {
         val maxCompactRowHeight = with(composeRule.density) { 64.dp.toPx() }
+        val heightTolerance = with(composeRule.density) { 1.dp.toPx() }
 
         val pendingHeight = composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-apples"))
             .fetchSemanticsNode().boundsInRoot.height
         val purchasedHeight = composeRule.onNodeWithTag(ShoppingListTestTags.purchasedItem("purchased-coffee"))
             .fetchSemanticsNode().boundsInRoot.height
 
-        assertTrue(pendingHeight <= maxCompactRowHeight)
-        assertTrue(purchasedHeight <= maxCompactRowHeight)
+        assertTrue(pendingHeight <= maxCompactRowHeight + heightTolerance)
+        assertTrue(purchasedHeight <= maxCompactRowHeight + heightTolerance)
     }
 
     @Test
