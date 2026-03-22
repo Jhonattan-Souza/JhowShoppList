@@ -4,6 +4,7 @@ import com.jhow.shopplist.core.dispatchers.IoDispatcher
 import com.jhow.shopplist.data.local.dao.ShoppingItemDao
 import com.jhow.shopplist.data.local.entity.ShoppingItemEntity
 import com.jhow.shopplist.domain.model.ShoppingItem
+import com.jhow.shopplist.domain.model.ShoppingItemSyncResult
 import com.jhow.shopplist.domain.model.SyncStatus
 import com.jhow.shopplist.domain.repository.ShoppingListRepository
 import java.util.UUID
@@ -57,6 +58,28 @@ class ShoppingListRepositoryImpl @Inject constructor(
             shoppingItemDao.markItemPending(
                 id = id,
                 updatedAt = System.currentTimeMillis()
+            )
+        }
+    }
+
+    override suspend fun softDeleteItem(id: String) {
+        withContext(ioDispatcher) {
+            shoppingItemDao.softDeleteItem(
+                id = id,
+                updatedAt = System.currentTimeMillis()
+            )
+        }
+    }
+
+    override suspend fun getPendingSyncItems(): List<ShoppingItem> = withContext(ioDispatcher) {
+        shoppingItemDao.getPendingSyncItems().map { it.toDomain() }
+    }
+
+    override suspend fun markItemsSynced(results: List<ShoppingItemSyncResult>) {
+        if (results.isEmpty()) return
+        withContext(ioDispatcher) {
+            shoppingItemDao.markItemsSynced(
+                items = results.associate { result -> result.id to result.serverUpdatedAt }
             )
         }
     }

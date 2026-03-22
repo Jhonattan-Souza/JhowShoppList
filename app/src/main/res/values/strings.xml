@@ -16,4 +16,9 @@
     <string name="never_purchased_label">Never purchased before</string>
     <string name="purchased_count_label">Purchased %1$d times</string>
     <string name="restore_to_pending_label">Tap to move back to pending</string>
+    <string name="delete_item_title">Delete item</string>
+    <string name="delete_item_message">Remove %1$s from the local list and queue the deletion for sync?</string>
+    <string name="delete_item_confirm">Delete</string>
+    <string name="delete_item_cancel">Cancel</string>
+    <string name="delete_item_content_description">Delete %1$s</string>
 </resources>

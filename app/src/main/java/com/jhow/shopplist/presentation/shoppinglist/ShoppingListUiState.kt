@@ -8,7 +8,8 @@ data class ShoppingListUiState(
     val inputValue: String = "",
     val pendingItems: List<ShoppingItem> = emptyList(),
     val purchasedItems: List<ShoppingItem> = emptyList(),
-    val selectedIds: Set<String> = emptySet()
+    val selectedIds: Set<String> = emptySet(),
+    val itemPendingDeletion: ShoppingItem? = null
 ) {
     val isBulkActionVisible: Boolean
         get() = selectedIds.isNotEmpty()

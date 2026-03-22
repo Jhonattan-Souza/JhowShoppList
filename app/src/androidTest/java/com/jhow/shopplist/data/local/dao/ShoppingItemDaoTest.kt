@@ -108,6 +108,52 @@ class ShoppingItemDaoTest {
         assertEquals(SyncStatus.PENDING_UPDATE, updatedItem.syncStatus)
     }
 
+    @Test
+    fun softDeleteItem_hidesItemAndMarksPendingDelete() = runBlocking {
+        dao.insertItem(entity(id = "spinach", name = "Spinach", syncStatus = SyncStatus.SYNCED))
+
+        dao.softDeleteItem(id = "spinach", updatedAt = 77)
+
+        assertTrue(dao.observePendingItems().first().isEmpty())
+        val deletedItem = dao.getAllItems().single()
+        assertTrue(deletedItem.isDeleted)
+        assertEquals(77, deletedItem.updatedAt)
+        assertEquals(SyncStatus.PENDING_DELETE, deletedItem.syncStatus)
+    }
+
+    @Test
+    fun getPendingSyncItems_returnsOnlyUnsyncedRows() = runBlocking {
+        dao.insertItems(
+            listOf(
+                entity(id = "milk", name = "Milk", syncStatus = SyncStatus.PENDING_INSERT),
+                entity(id = "bread", name = "Bread", syncStatus = SyncStatus.PENDING_UPDATE),
+                entity(id = "rice", name = "Rice", syncStatus = SyncStatus.SYNCED)
+            )
+        )
+
+        val pendingSyncItems = dao.getPendingSyncItems()
+
+        assertEquals(listOf("milk", "bread"), pendingSyncItems.map { it.id })
+    }
+
+    @Test
+    fun markItemsSynced_updatesUpdatedAtAndSyncStatus() = runBlocking {
+        dao.insertItems(
+            listOf(
+                entity(id = "beans", name = "Beans", syncStatus = SyncStatus.PENDING_INSERT),
+                entity(id = "tea", name = "Tea", syncStatus = SyncStatus.PENDING_DELETE)
+            )
+        )
+
+        dao.markItemsSynced(mapOf("beans" to 101L, "tea" to 102L))
+
+        val items = dao.getAllItems().associateBy { it.id }
+        assertEquals(SyncStatus.SYNCED, items.getValue("beans").syncStatus)
+        assertEquals(101L, items.getValue("beans").updatedAt)
+        assertEquals(SyncStatus.SYNCED, items.getValue("tea").syncStatus)
+        assertEquals(102L, items.getValue("tea").updatedAt)
+    }
+
     private fun entity(
         id: String,
         name: String,

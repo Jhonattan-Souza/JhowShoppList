@@ -95,6 +95,34 @@ class ShoppingListScreenTest {
         assertTrue(composeRule.onAllNodesWithText("Yogurt").fetchSemanticsNodes().isNotEmpty())
     }
 
+    @Test
+    fun deletingPendingItemRemovesItFromVisibleLists() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.deletePendingItem("pending-apples")).performClick()
+        composeRule.onNodeWithText("Delete").performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("pending-apples")).fetchSemanticsNodes().isEmpty()
+        }
+
+        assertTrue(
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("pending-apples")).fetchSemanticsNodes().isEmpty()
+        )
+    }
+
+    @Test
+    fun deletingPurchasedItemRemovesItFromHistory() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.deletePurchasedItem("purchased-coffee")).performClick()
+        composeRule.onNodeWithText("Delete").performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.purchasedItem("purchased-coffee")).fetchSemanticsNodes().isEmpty()
+        }
+
+        assertTrue(
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.purchasedItem("purchased-coffee")).fetchSemanticsNodes().isEmpty()
+        )
+    }
+
     private fun sampleItems(): List<ShoppingItemEntity> = listOf(
         ShoppingItemEntity(
             id = "pending-apples",

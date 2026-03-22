@@ -3,10 +3,12 @@ package com.jhow.shopplist.presentation.shoppinglist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jhow.shopplist.domain.usecase.AddShoppingItemUseCase
+import com.jhow.shopplist.domain.usecase.DeleteShoppingItemUseCase
 import com.jhow.shopplist.domain.usecase.MarkPurchasedItemPendingUseCase
 import com.jhow.shopplist.domain.usecase.MarkSelectedItemsPurchasedUseCase
 import com.jhow.shopplist.domain.usecase.ObservePendingItemsUseCase
 import com.jhow.shopplist.domain.usecase.ObservePurchasedItemsUseCase
+import com.jhow.shopplist.domain.usecase.RequestShoppingSyncUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,26 +24,32 @@ class ShoppingListViewModel @Inject constructor(
     observePendingItemsUseCase: ObservePendingItemsUseCase,
     observePurchasedItemsUseCase: ObservePurchasedItemsUseCase,
     private val addShoppingItemUseCase: AddShoppingItemUseCase,
+    private val deleteShoppingItemUseCase: DeleteShoppingItemUseCase,
     private val markSelectedItemsPurchasedUseCase: MarkSelectedItemsPurchasedUseCase,
-    private val markPurchasedItemPendingUseCase: MarkPurchasedItemPendingUseCase
+    private val markPurchasedItemPendingUseCase: MarkPurchasedItemPendingUseCase,
+    private val requestShoppingSyncUseCase: RequestShoppingSyncUseCase
 ) : ViewModel() {
 
     private val inputValue = MutableStateFlow("")
     private val selectedIds = MutableStateFlow(emptySet<String>())
+    private val itemPendingDeletion = MutableStateFlow<com.jhow.shopplist.domain.model.ShoppingItem?>(null)
 
     val uiState: StateFlow<ShoppingListUiState> = combine(
         observePendingItemsUseCase(),
         observePurchasedItemsUseCase(),
         inputValue,
-        selectedIds
-    ) { pendingItems, purchasedItems, currentInput, currentSelection ->
+        selectedIds,
+        itemPendingDeletion
+    ) { pendingItems, purchasedItems, currentInput, currentSelection, pendingDeletion ->
         val pendingIds = pendingItems.mapTo(linkedSetOf(), transform = { it.id })
         val distinctPurchasedItems = purchasedItems.filterNot { it.id in pendingIds }
+        val visibleItems = pendingItems + distinctPurchasedItems
         ShoppingListUiState(
             inputValue = currentInput,
             pendingItems = pendingItems,
             purchasedItems = distinctPurchasedItems,
-            selectedIds = currentSelection.intersect(pendingIds)
+            selectedIds = currentSelection.intersect(pendingIds),
+            itemPendingDeletion = visibleItems.firstOrNull { it.id == pendingDeletion?.id }
         )
     }.stateIn(
         scope = viewModelScope,
@@ -60,6 +68,7 @@ class ShoppingListViewModel @Inject constructor(
         viewModelScope.launch {
             addShoppingItemUseCase(currentValue)
             inputValue.value = ""
+            requestShoppingSyncUseCase()
         }
     }
 
@@ -76,6 +85,7 @@ class ShoppingListViewModel @Inject constructor(
         viewModelScope.launch {
             markSelectedItemsPurchasedUseCase(ids)
             selectedIds.value = emptySet()
+            requestShoppingSyncUseCase()
         }
     }
 
@@ -83,6 +93,26 @@ class ShoppingListViewModel @Inject constructor(
         viewModelScope.launch {
             markPurchasedItemPendingUseCase(id)
             selectedIds.update { it - id }
+            requestShoppingSyncUseCase()
+        }
+    }
+
+    fun onDeleteItemRequested(item: com.jhow.shopplist.domain.model.ShoppingItem) {
+        itemPendingDeletion.value = item
+    }
+
+    fun onDeleteItemDismissed() {
+        itemPendingDeletion.value = null
+    }
+
+    fun onDeleteItemConfirmed() {
+        val item = itemPendingDeletion.value ?: return
+
+        viewModelScope.launch {
+            deleteShoppingItemUseCase(item.id)
+            selectedIds.update { it - item.id }
+            itemPendingDeletion.value = null
+            requestShoppingSyncUseCase()
         }
     }
 }

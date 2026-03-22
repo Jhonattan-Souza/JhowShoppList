@@ -4,11 +4,14 @@ import app.cash.turbine.test
 import com.jhow.shopplist.domain.model.ShoppingItem
 import com.jhow.shopplist.domain.model.SyncStatus
 import com.jhow.shopplist.domain.usecase.AddShoppingItemUseCase
+import com.jhow.shopplist.domain.usecase.DeleteShoppingItemUseCase
 import com.jhow.shopplist.domain.usecase.MarkPurchasedItemPendingUseCase
 import com.jhow.shopplist.domain.usecase.MarkSelectedItemsPurchasedUseCase
 import com.jhow.shopplist.domain.usecase.ObservePendingItemsUseCase
 import com.jhow.shopplist.domain.usecase.ObservePurchasedItemsUseCase
+import com.jhow.shopplist.domain.usecase.RequestShoppingSyncUseCase
 import com.jhow.shopplist.testing.FakeShoppingListRepository
+import com.jhow.shopplist.testing.FakeShoppingSyncScheduler
 import com.jhow.shopplist.testing.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -24,17 +27,21 @@ class ShoppingListViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private lateinit var repository: FakeShoppingListRepository
+    private lateinit var syncScheduler: FakeShoppingSyncScheduler
     private lateinit var viewModel: ShoppingListViewModel
 
     @Before
     fun setUp() {
         repository = FakeShoppingListRepository()
+        syncScheduler = FakeShoppingSyncScheduler()
         viewModel = ShoppingListViewModel(
             observePendingItemsUseCase = ObservePendingItemsUseCase(repository),
             observePurchasedItemsUseCase = ObservePurchasedItemsUseCase(repository),
             addShoppingItemUseCase = AddShoppingItemUseCase(repository),
+            deleteShoppingItemUseCase = DeleteShoppingItemUseCase(repository),
             markSelectedItemsPurchasedUseCase = MarkSelectedItemsPurchasedUseCase(repository),
-            markPurchasedItemPendingUseCase = MarkPurchasedItemPendingUseCase(repository)
+            markPurchasedItemPendingUseCase = MarkPurchasedItemPendingUseCase(repository),
+            requestShoppingSyncUseCase = RequestShoppingSyncUseCase(syncScheduler)
         )
     }
 
@@ -47,6 +54,7 @@ class ShoppingListViewModelTest {
 
         assertEquals(listOf("Oats"), repository.addedNames)
         assertEquals("", viewModel.uiState.value.inputValue)
+        assertEquals(1, syncScheduler.requestCount)
     }
 
     @Test
@@ -83,6 +91,7 @@ class ShoppingListViewModelTest {
         assertEquals(listOf(setOf("milk", "tea")), repository.purchasedRequests)
         assertEquals(emptySet<String>(), viewModel.uiState.value.selectedIds)
         assertEquals(listOf("milk", "tea"), viewModel.uiState.value.purchasedItems.map { it.id })
+        assertEquals(1, syncScheduler.requestCount)
     }
 
     @Test
@@ -108,6 +117,35 @@ class ShoppingListViewModelTest {
 
         assertEquals(listOf("coffee"), repository.pendingRequests)
         assertEquals(listOf("coffee"), viewModel.uiState.value.pendingItems.map { it.id })
+        assertEquals(1, syncScheduler.requestCount)
+    }
+
+    @Test
+    fun `delete confirmation soft deletes the item and requests sync`() = runTest {
+        repository.seedItems(listOf(samplePendingItem(id = "tomatoes")))
+        advanceUntilIdle()
+
+        viewModel.onDeleteItemRequested(samplePendingItem(id = "tomatoes"))
+        advanceUntilIdle()
+        assertEquals("tomatoes", viewModel.uiState.value.itemPendingDeletion?.id)
+
+        viewModel.onDeleteItemConfirmed()
+        advanceUntilIdle()
+
+        assertEquals(listOf("tomatoes"), repository.deletedRequests)
+        assertEquals(null, viewModel.uiState.value.itemPendingDeletion)
+        assertEquals(1, syncScheduler.requestCount)
+    }
+
+    @Test
+    fun `delete dismissal clears pending deletion item`() = runTest {
+        repository.seedItems(listOf(samplePurchasedItem(id = "olive-oil")))
+        advanceUntilIdle()
+
+        viewModel.onDeleteItemRequested(samplePurchasedItem(id = "olive-oil"))
+        viewModel.onDeleteItemDismissed()
+
+        assertEquals(null, viewModel.uiState.value.itemPendingDeletion)
     }
 
     @Test
