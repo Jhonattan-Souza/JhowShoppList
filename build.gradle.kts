@@ -6,3 +6,21 @@ plugins {
     alias(libs.plugins.hilt.android) apply false
     alias(libs.plugins.ksp) apply false
 }
+
+import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
+
+subprojects {
+    plugins.withId("org.jetbrains.kotlin.android") {
+        extensions.configure<KotlinAndroidProjectExtension> {
+            compilerOptions {
+                allWarningsAsErrors.set(true)
+            }
+        }
+    }
+
+    tasks.withType<JavaCompile>().configureEach {
+        if (!name.contains("hilt", ignoreCase = true)) {
+            options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
+        }
+    }
+}
