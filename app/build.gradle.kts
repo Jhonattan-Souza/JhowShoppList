@@ -1,5 +1,6 @@
 import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
 import org.gradle.testing.jacoco.tasks.JacocoReport
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -8,6 +9,46 @@ plugins {
     alias(libs.plugins.ksp)
     jacoco
 }
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.inputStream().use(keystoreProperties::load)
+}
+
+fun signingValue(propertyName: String, envName: String): String? {
+    val propertyValue = keystoreProperties.getProperty(propertyName)?.trim().orEmpty()
+    if (propertyValue.isNotEmpty()) {
+        return propertyValue
+    }
+
+    val envValue = System.getenv(envName)?.trim().orEmpty()
+    return envValue.ifEmpty { null }
+}
+
+val releaseStoreFile = signingValue(
+    propertyName = "releaseStoreFile",
+    envName = "JHOW_SHOPPLIST_RELEASE_STORE_FILE"
+)
+val releaseStorePassword = signingValue(
+    propertyName = "releaseStorePassword",
+    envName = "JHOW_SHOPPLIST_RELEASE_STORE_PASSWORD"
+)
+val releaseKeyAlias = signingValue(
+    propertyName = "releaseKeyAlias",
+    envName = "JHOW_SHOPPLIST_RELEASE_KEY_ALIAS"
+)
+val releaseKeyPassword = signingValue(
+    propertyName = "releaseKeyPassword",
+    envName = "JHOW_SHOPPLIST_RELEASE_KEY_PASSWORD"
+)
+val hasReleaseSigningConfig = listOf(
+    releaseStoreFile,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword
+).all { !it.isNullOrBlank() }
 
 android {
     namespace = "com.jhow.shopplist"
@@ -24,6 +65,16 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        if (hasReleaseSigningConfig) {
+            create("release") {
+                storeFile = file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
@@ -32,6 +83,9 @@ android {
             enableAndroidTestCoverage = true
         }
         release {
+            if (hasReleaseSigningConfig) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -65,6 +119,16 @@ android {
             "GradleDependency",
             "AndroidGradlePluginVersion"
         )
+    }
+}
+
+tasks.matching { task ->
+    task.name in setOf("assembleRelease", "bundleRelease", "packageRelease", "installRelease")
+}.configureEach {
+    doFirst {
+        check(hasReleaseSigningConfig) {
+            "Release signing is not configured. Set releaseStoreFile, releaseStorePassword, releaseKeyAlias, and releaseKeyPassword in keystore.properties or the matching JHOW_SHOPPLIST_RELEASE_* environment variables."
+        }
     }
 }
 
