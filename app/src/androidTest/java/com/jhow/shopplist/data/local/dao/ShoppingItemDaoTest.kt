@@ -3,6 +3,7 @@ package com.jhow.shopplist.data.local.dao
 import androidx.room.Room
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.jhow.shopplist.core.search.ShoppingSearch
 import com.jhow.shopplist.data.local.db.AppDatabase
 import com.jhow.shopplist.data.local.entity.ShoppingItemEntity
 import com.jhow.shopplist.domain.model.SyncStatus
@@ -68,25 +69,25 @@ class ShoppingItemDaoTest {
     }
 
     @Test
-    fun findItemByName_returnsMatchingEntity_caseInsensitive() = runBlocking {
+    fun findItemByNormalizedName_returnsMatchingEntity_accentInsensitive() = runBlocking {
         dao.insertItems(
             listOf(
-                entity(id = "pending-milk", name = "Milk"),
-                entity(id = "purchased-milk", name = "MILK", isPurchased = true, purchaseCount = 5)
+                entity(id = "pending-cafe", name = "Café"),
+                entity(id = "purchased-cafe", name = "CAFE", isPurchased = true, purchaseCount = 5)
             )
         )
 
-        val item = dao.findItemByName("milk")
+        val item = dao.findItemByNormalizedName(ShoppingSearch.normalize("cafe"))
 
-        assertEquals("pending-milk", item?.id)
+        assertEquals("pending-cafe", item?.id)
     }
 
     @Test
-    fun findItemByName_returnsNullForDeletedItems() = runBlocking {
-        dao.insertItem(entity(id = "deleted-milk", name = "Milk"))
-        dao.softDeleteItem(id = "deleted-milk", updatedAt = 22)
+    fun findItemByNormalizedName_returnsNullForDeletedItems() = runBlocking {
+        dao.insertItem(entity(id = "deleted-cafe", name = "Café"))
+        dao.softDeleteItem(id = "deleted-cafe", updatedAt = 22)
 
-        val item = dao.findItemByName("milk")
+        val item = dao.findItemByNormalizedName(ShoppingSearch.normalize("cafe"))
 
         assertNull(item)
     }
@@ -106,6 +107,21 @@ class ShoppingItemDaoTest {
         val names = dao.observeAllItemNames().first()
 
         assertEquals(listOf("Beans", "Bread"), names)
+    }
+
+    @Test
+    fun observeAllItemNames_groupsAccentVariantsIntoOneSuggestion() = runBlocking {
+        dao.insertItems(
+            listOf(
+                entity(id = "accented", name = "Café", purchaseCount = 5),
+                entity(id = "plain", name = "Cafe", purchaseCount = 3)
+            )
+        )
+
+        val names = dao.observeAllItemNames().first()
+
+        assertEquals(1, names.size)
+        assertEquals("cafe", ShoppingSearch.normalize(names.single()))
     }
 
     @Test

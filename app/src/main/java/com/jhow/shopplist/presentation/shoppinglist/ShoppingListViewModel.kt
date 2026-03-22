@@ -2,6 +2,7 @@ package com.jhow.shopplist.presentation.shoppinglist
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jhow.shopplist.core.search.ShoppingSearch
 import com.jhow.shopplist.domain.usecase.AddOrReclaimShoppingItemUseCase
 import com.jhow.shopplist.domain.usecase.DeleteShoppingItemUseCase
 import com.jhow.shopplist.domain.usecase.MarkPurchasedItemPendingUseCase
@@ -133,16 +134,35 @@ class ShoppingListViewModel @Inject constructor(
         const val MAX_SUGGESTION_COUNT = 5
 
         fun buildSuggestions(allItemNames: List<String>, currentInput: String): List<String> {
-            val normalizedInput = currentInput.trim()
+            val normalizedInput = ShoppingSearch.normalize(currentInput)
             if (normalizedInput.length < MIN_SUGGESTION_QUERY_LENGTH) {
                 return emptyList()
             }
 
             return allItemNames
                 .asSequence()
-                .filter { it.contains(normalizedInput, ignoreCase = true) }
+                .mapIndexedNotNull { index, name ->
+                    ShoppingSearch.suggestionScore(
+                        candidate = name,
+                        normalizedQuery = normalizedInput
+                    )?.let { score ->
+                        SuggestionCandidate(
+                            name = name,
+                            originalIndex = index,
+                            score = score
+                        )
+                    }
+                }
+                .sortedWith(compareBy<SuggestionCandidate> { it.score }.thenBy { it.originalIndex })
                 .take(MAX_SUGGESTION_COUNT)
+                .map(SuggestionCandidate::name)
                 .toList()
         }
+
+        private data class SuggestionCandidate(
+            val name: String,
+            val originalIndex: Int,
+            val score: Int
+        )
     }
 }

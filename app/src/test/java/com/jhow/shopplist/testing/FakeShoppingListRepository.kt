@@ -1,5 +1,6 @@
 package com.jhow.shopplist.testing
 
+import com.jhow.shopplist.core.search.ShoppingSearch
 import com.jhow.shopplist.domain.model.ShoppingItem
 import com.jhow.shopplist.domain.model.ShoppingItemSyncResult
 import com.jhow.shopplist.domain.model.SyncStatus
@@ -28,7 +29,7 @@ class FakeShoppingListRepository : ShoppingListRepository {
             .asSequence()
             .filter { !it.isDeleted }
             .sortedWith(compareByDescending<ShoppingItem> { it.purchaseCount }.thenBy { it.name.lowercase() })
-            .distinctBy { it.name.lowercase() }
+            .distinctBy { ShoppingSearch.normalize(it.name) }
             .map { it.name }
             .toList()
     }
@@ -51,7 +52,7 @@ class FakeShoppingListRepository : ShoppingListRepository {
     override suspend fun findItemByName(name: String): ShoppingItem? =
         items.value
             .asSequence()
-            .filter { !it.isDeleted && it.name.equals(name, ignoreCase = true) }
+            .filter { !it.isDeleted && ShoppingSearch.normalize(it.name) == ShoppingSearch.normalize(name) }
             .sortedWith(compareBy<ShoppingItem> { it.isPurchased }.thenByDescending { it.purchaseCount }.thenByDescending { it.updatedAt })
             .firstOrNull()
 
