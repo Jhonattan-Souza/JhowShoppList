@@ -51,7 +51,6 @@ Android shopping list app built with Kotlin, Jetpack Compose, Room, Hilt, Corout
 - instrumented tests target the debug app only, so they do not touch production data
 - `scripts/deploy-debug.sh` installs `com.jhow.shopplist.debug` with `adb install -r`, which updates the debug app without clearing its database or app data
 - `scripts/deploy-release.sh` installs `com.jhow.shopplist` with `adb install -r`, which updates the release app without clearing its database or app data
-- `scripts/deploy-phone.sh` now exits with a warning so you must choose the debug or release path explicitly
 
 ## Release signing
 
