@@ -1,6 +1,7 @@
 package com.jhow.shopplist.presentation.shoppinglist
 
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -84,6 +85,22 @@ class ShoppingListScreenTest {
     }
 
     @Test
+    fun bulkActionFabFloatsAboveExpandedInputComposer() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-apples")).performClick()
+        composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("co")
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.PURCHASE_SELECTED_FAB).fetchSemanticsNodes().isNotEmpty() &&
+                composeRule.onAllNodesWithTag(ShoppingListTestTags.SUGGESTION_LIST).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        val fabBottom = composeRule.onNodeWithTag(ShoppingListTestTags.PURCHASE_SELECTED_FAB).fetchSemanticsNode().boundsInRoot.bottom
+        val suggestionTop = composeRule.onNodeWithTag(ShoppingListTestTags.SUGGESTION_LIST).fetchSemanticsNode().boundsInRoot.top
+
+        assertTrue(fabBottom <= suggestionTop)
+    }
+
+    @Test
     fun addingItemFromInputShowsItInPendingList() {
         composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("Yogurt")
         composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performImeAction()
@@ -93,6 +110,18 @@ class ShoppingListScreenTest {
         }
 
         assertTrue(composeRule.onAllNodesWithText("Yogurt").fetchSemanticsNodes().isNotEmpty())
+    }
+
+    @Test
+    fun addingItemFromInputKeepsInputFocusedForContinuousEntry() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("Yogurt")
+        composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performImeAction()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithText("Yogurt").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).assertIsFocused()
     }
 
     @Test
@@ -112,6 +141,24 @@ class ShoppingListScreenTest {
     }
 
     @Test
+    fun overflowingSuggestionListKeepsTopMatchesVisibleNearestTheKeyboard() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("co")
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.suggestionItem("Coffee")).fetchSemanticsNodes().isNotEmpty() &&
+                composeRule.onAllNodesWithTag(ShoppingListTestTags.suggestionItem("Cocoa")).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        val suggestionListBottom = composeRule.onNodeWithTag(ShoppingListTestTags.SUGGESTION_LIST).fetchSemanticsNode().boundsInRoot.bottom
+        val coffeeBottom = composeRule.onNodeWithTag(ShoppingListTestTags.suggestionItem("Coffee")).fetchSemanticsNode().boundsInRoot.bottom
+        val coffeeTop = composeRule.onNodeWithTag(ShoppingListTestTags.suggestionItem("Coffee")).fetchSemanticsNode().boundsInRoot.top
+        val cocoaTop = composeRule.onNodeWithTag(ShoppingListTestTags.suggestionItem("Cocoa")).fetchSemanticsNode().boundsInRoot.top
+
+        assertTrue(suggestionListBottom - coffeeBottom < 8f)
+        assertTrue(coffeeTop > cocoaTop)
+    }
+
+    @Test
     fun tappingSuggestionReclaimsTheItem() {
         composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("co")
 
@@ -128,6 +175,23 @@ class ShoppingListScreenTest {
         assertTrue(
             composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("purchased-coffee")).fetchSemanticsNodes().isNotEmpty()
         )
+    }
+
+    @Test
+    fun tappingSuggestionKeepsInputFocusedForContinuousEntry() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("co")
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.suggestionItem("Coffee")).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.suggestionItem("Coffee")).performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("purchased-coffee")).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).assertIsFocused()
     }
 
     @Test
@@ -203,6 +267,56 @@ class ShoppingListScreenTest {
             purchaseCount = 7,
             createdAt = 1L,
             updatedAt = 2L,
+            isDeleted = false,
+            syncStatus = SyncStatus.SYNCED
+        ),
+        ShoppingItemEntity(
+            id = "pending-cocoa",
+            name = "Cocoa",
+            isPurchased = false,
+            purchaseCount = 2,
+            createdAt = 1L,
+            updatedAt = 1L,
+            isDeleted = false,
+            syncStatus = SyncStatus.SYNCED
+        ),
+        ShoppingItemEntity(
+            id = "pending-coconut-milk",
+            name = "Coconut Milk",
+            isPurchased = false,
+            purchaseCount = 3,
+            createdAt = 1L,
+            updatedAt = 1L,
+            isDeleted = false,
+            syncStatus = SyncStatus.SYNCED
+        ),
+        ShoppingItemEntity(
+            id = "pending-cookie-butter",
+            name = "Cookie Butter",
+            isPurchased = false,
+            purchaseCount = 5,
+            createdAt = 1L,
+            updatedAt = 1L,
+            isDeleted = false,
+            syncStatus = SyncStatus.SYNCED
+        ),
+        ShoppingItemEntity(
+            id = "pending-cola",
+            name = "Cola",
+            isPurchased = false,
+            purchaseCount = 1,
+            createdAt = 1L,
+            updatedAt = 1L,
+            isDeleted = false,
+            syncStatus = SyncStatus.SYNCED
+        ),
+        ShoppingItemEntity(
+            id = "pending-cornflakes",
+            name = "Cornflakes",
+            isPurchased = false,
+            purchaseCount = 1,
+            createdAt = 1L,
+            updatedAt = 1L,
             isDeleted = false,
             syncStatus = SyncStatus.SYNCED
         )

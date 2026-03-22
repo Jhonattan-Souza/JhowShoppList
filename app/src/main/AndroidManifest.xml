@@ -27,7 +27,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.JhowShoppList"
-            android:windowSoftInputMode="stateHidden">
+            android:windowSoftInputMode="stateHidden|adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

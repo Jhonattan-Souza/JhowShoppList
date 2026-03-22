@@ -8,12 +8,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,11 +46,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -56,6 +66,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -97,6 +111,11 @@ fun ShoppingListScreen(
     modifier: Modifier = Modifier
 ) {
     val focusManager = LocalFocusManager.current
+    var inputBarContentHeightPx by remember { mutableIntStateOf(0) }
+    val density = LocalDensity.current
+    val bulkFabBottomClearance = with(density) {
+        if (inputBarContentHeightPx > 0) inputBarContentHeightPx.toDp() + 16.dp else 88.dp
+    }
 
     LaunchedEffect(Unit) {
         focusManager.clearFocus(force = true)
@@ -105,8 +124,8 @@ fun ShoppingListScreen(
     Scaffold(
         modifier = modifier
             .fillMaxSize()
-            .safeDrawingPadding()
             .testTag(ShoppingListTestTags.SCREEN),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             TopAppBar(
                 title = {
@@ -114,40 +133,37 @@ fun ShoppingListScreen(
                 }
             )
         },
-        bottomBar = {
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            ShoppingItemsContent(
+                uiState = uiState,
+                onPendingItemClick = onPendingItemClick,
+                onPurchasedItemClick = onPurchasedItemClick,
+                onDeleteItemRequested = onDeleteItemRequested,
+                modifier = Modifier.fillMaxSize()
+            )
+
             ShoppingInputBar(
                 value = uiState.inputValue,
                 suggestions = uiState.suggestions,
                 onValueChange = onInputValueChange,
                 onDone = onAddItem,
-                onSuggestionSelected = onSuggestionSelected
+                onSuggestionSelected = onSuggestionSelected,
+                onContentHeightChanged = { inputBarContentHeightPx = it },
+                modifier = Modifier.align(Alignment.BottomCenter)
             )
-        },
-        floatingActionButton = {
-            AnimatedVisibility(
+
+            BulkPurchaseFab(
                 visible = uiState.isBulkActionVisible,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                FloatingActionButton(
-                    onClick = onPurchaseSelectedItems,
-                    modifier = Modifier.testTag(ShoppingListTestTags.PURCHASE_SELECTED_FAB)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Check,
-                        contentDescription = stringResource(R.string.purchase_selected_items)
-                    )
-                }
-            }
+                onClick = onPurchaseSelectedItems,
+                bottomClearance = bulkFabBottomClearance,
+                modifier = Modifier.align(Alignment.BottomEnd)
+            )
         }
-    ) { innerPadding ->
-        ShoppingItemsContent(
-            uiState = uiState,
-            onPendingItemClick = onPendingItemClick,
-            onPurchasedItemClick = onPurchasedItemClick,
-            onDeleteItemRequested = onDeleteItemRequested,
-            modifier = Modifier.padding(innerPadding)
-        )
 
         DeleteItemDialog(
             item = uiState.itemPendingDeletion,
@@ -164,59 +180,117 @@ private fun ShoppingInputBar(
     onValueChange: (String) -> Unit,
     onDone: () -> Unit,
     onSuggestionSelected: (String) -> Unit,
+    onContentHeightChanged: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    fun restoreContinuousEntry() {
+        focusRequester.requestFocus()
+        keyboardController?.show()
+    }
+
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .navigationBarsPadding()
+            .imePadding()
     ) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .testTag(ShoppingListTestTags.INPUT_FIELD),
-            label = { Text(text = stringResource(R.string.add_item_label)) },
-            placeholder = { Text(text = stringResource(R.string.add_item_placeholder)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { onDone() }),
-            trailingIcon = {
-                Icon(
-                    imageVector = Icons.Rounded.AddTask,
-                    contentDescription = null
-                )
-            }
-        )
-
-        AnimatedVisibility(visible = suggestions.isNotEmpty()) {
-            Surface(
+                .background(MaterialTheme.colorScheme.surface)
+                .onSizeChanged { onContentHeightChanged(it.height) }
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp)
-                    .testTag(ShoppingListTestTags.SUGGESTION_LIST),
-                shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerLow
-            ) {
-                Column {
-                    suggestions.forEachIndexed { index, suggestion ->
-                        if (index > 0) {
-                            HorizontalDivider()
+                    .focusRequester(focusRequester)
+                    .testTag(ShoppingListTestTags.INPUT_FIELD),
+                label = { Text(text = stringResource(R.string.add_item_label)) },
+                placeholder = { Text(text = stringResource(R.string.add_item_placeholder)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        onDone()
+                        restoreContinuousEntry()
+                    }
+                ),
+                trailingIcon = {
+                    Icon(
+                        imageVector = Icons.Rounded.AddTask,
+                        contentDescription = null
+                    )
+                }
+            )
+
+            AnimatedVisibility(visible = suggestions.isNotEmpty()) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                        .heightIn(max = 176.dp)
+                        .testTag(ShoppingListTestTags.SUGGESTION_LIST),
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow
+                ) {
+                    LazyColumn(reverseLayout = true) {
+                        suggestions.forEachIndexed { index, suggestion ->
+                            item(key = suggestion) {
+                                if (index > 0) {
+                                    HorizontalDivider()
+                                }
+                                Text(
+                                    text = suggestion,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .defaultMinSize(minHeight = 56.dp)
+                                        .clickable {
+                                            onSuggestionSelected(suggestion)
+                                            restoreContinuousEntry()
+                                        }
+                                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                                        .testTag(ShoppingListTestTags.suggestionItem(suggestion))
+                                )
+                            }
                         }
-                        Text(
-                            text = suggestion,
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onSuggestionSelected(suggestion) }
-                                .padding(horizontal = 16.dp, vertical = 14.dp)
-                                .testTag(ShoppingListTestTags.suggestionItem(suggestion))
-                        )
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun BulkPurchaseFab(
+    visible: Boolean,
+    onClick: () -> Unit,
+    bottomClearance: Dp,
+    modifier: Modifier = Modifier
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(),
+        exit = fadeOut(),
+        modifier = modifier
+            .navigationBarsPadding()
+            .imePadding()
+            .padding(end = 16.dp, bottom = bottomClearance)
+    ) {
+        FloatingActionButton(
+            onClick = onClick,
+            modifier = Modifier.testTag(ShoppingListTestTags.PURCHASE_SELECTED_FAB)
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Check,
+                contentDescription = stringResource(R.string.purchase_selected_items)
+            )
         }
     }
 }
