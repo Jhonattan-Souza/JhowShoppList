@@ -1,24 +1,18 @@
 <resources>
     <string name="app_name">JhowShoppList</string>
     <string name="shopping_list_title">Shopping list</string>
-    <string name="shopping_list_subtitle">Select pending items, then confirm them all at once.</string>
     <string name="add_item_label">Add item</string>
     <string name="add_item_placeholder">Milk, coffee, tomatoes\u2026</string>
     <string name="purchase_selected_items">Mark selected items as purchased</string>
     <string name="pending_items_title">Pending items</string>
-    <string name="pending_items_subtitle">Tap to select what you are buying right now.</string>
     <string name="purchased_items_title">Purchased history</string>
-    <string name="purchased_items_subtitle">Tap an item to send it back to the active list.</string>
     <string name="empty_pending_title">Nothing pending yet</string>
-    <string name="empty_pending_subtitle">Add your first product below to start building the list.</string>
     <string name="empty_purchased_title">No purchase history</string>
-    <string name="empty_purchased_subtitle">Items you complete will stay here for quick reuse.</string>
     <string name="never_purchased_label">Never purchased before</string>
     <plurals name="purchased_count_label">
         <item quantity="one">Purchased %1$d time</item>
         <item quantity="other">Purchased %1$d times</item>
     </plurals>
-    <string name="restore_to_pending_label">Tap to move back to pending</string>
     <string name="delete_item_title">Delete item</string>
     <string name="delete_item_message">Remove %1$s from the local list and queue the deletion for sync?</string>
     <string name="delete_item_confirm">Delete</string>
