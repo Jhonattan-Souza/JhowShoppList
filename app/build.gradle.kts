@@ -41,8 +41,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "11"
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+        }
     }
     buildFeatures {
         compose = true
@@ -52,6 +54,14 @@ android {
         unitTests {
             isIncludeAndroidResources = true
         }
+    }
+    lint {
+        warningsAsErrors = true
+        abortOnError = true
+        disable += setOf(
+            "GradleDependency",
+            "AndroidGradlePluginVersion"
+        )
     }
 }
 
@@ -77,11 +87,11 @@ val jacocoExcludes = listOf(
     "**/*ComposableSingletons*.*"
 )
 
-val debugTree = fileTree("$buildDir/tmp/kotlin-classes/debug") {
+val debugTree = fileTree("${layout.buildDirectory.get().asFile}/tmp/kotlin-classes/debug") {
     exclude(jacocoExcludes)
 }
 
-val debugJavaTree = fileTree("$buildDir/intermediates/javac/debug/compileDebugJavaWithJavac/classes") {
+val debugJavaTree = fileTree("${layout.buildDirectory.get().asFile}/intermediates/javac/debug/compileDebugJavaWithJavac/classes") {
     exclude(jacocoExcludes)
 }
 
@@ -96,7 +106,7 @@ tasks.register<JacocoReport>("jacocoFullReport") {
     classDirectories.setFrom(files(debugTree, debugJavaTree))
     sourceDirectories.setFrom(files("src/main/java"))
     executionData.setFrom(
-        fileTree(buildDir) {
+        fileTree(layout.buildDirectory.get().asFile) {
             include(
                 "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
                 "outputs/code_coverage/**/connected/**/*.ec",
@@ -113,7 +123,7 @@ tasks.register<JacocoCoverageVerification>("verifyDebugCoverage") {
     classDirectories.setFrom(files(debugTree, debugJavaTree))
     sourceDirectories.setFrom(files("src/main/java"))
     executionData.setFrom(
-        fileTree(buildDir) {
+        fileTree(layout.buildDirectory.get().asFile) {
             include(
                 "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
                 "outputs/code_coverage/**/connected/**/*.ec",

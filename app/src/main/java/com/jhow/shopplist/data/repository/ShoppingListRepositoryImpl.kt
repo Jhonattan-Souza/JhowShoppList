@@ -16,7 +16,7 @@ import kotlinx.coroutines.withContext
 
 class ShoppingListRepositoryImpl @Inject constructor(
     private val shoppingItemDao: ShoppingItemDao,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ShoppingListRepository {
 
     override fun observePendingItems(): Flow<List<ShoppingItem>> =
