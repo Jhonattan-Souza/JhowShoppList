@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.jhow.shopplist.MainActivity
 import com.jhow.shopplist.data.local.db.AppDatabase
@@ -82,6 +83,19 @@ class ShoppingListScreenTest {
         assertTrue(
             composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("purchased-coffee")).fetchSemanticsNodes().isNotEmpty()
         )
+    }
+
+    @Test
+    fun shoppingRowsUseCompactSingleLineHeight() {
+        val maxCompactRowHeight = with(composeRule.density) { 64.dp.toPx() }
+
+        val pendingHeight = composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-apples"))
+            .fetchSemanticsNode().boundsInRoot.height
+        val purchasedHeight = composeRule.onNodeWithTag(ShoppingListTestTags.purchasedItem("purchased-coffee"))
+            .fetchSemanticsNode().boundsInRoot.height
+
+        assertTrue(pendingHeight <= maxCompactRowHeight)
+        assertTrue(purchasedHeight <= maxCompactRowHeight)
     }
 
     @Test

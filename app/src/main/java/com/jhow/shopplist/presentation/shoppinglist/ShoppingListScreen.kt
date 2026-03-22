@@ -17,7 +17,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,12 +40,11 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -58,7 +61,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -305,8 +307,8 @@ private fun ShoppingItemsContent(
 ) {
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 100.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 100.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item(key = ShoppingListTestTags.PENDING_SECTION) {
             SectionHeader(
@@ -441,45 +443,16 @@ private fun PendingItemRow(
         MaterialTheme.colorScheme.surfaceContainerLow
     }
 
-    ListItem(
-        headlineContent = {
-            Text(
-                text = item.name,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        },
-        supportingContent = {
-            Text(
-                text = if (item.purchaseCount == 0) {
-                    stringResource(R.string.never_purchased_label)
-                } else {
-                    pluralStringResource(R.plurals.purchased_count_label, item.purchaseCount, item.purchaseCount)
-                }
-            )
-        },
-        leadingContent = {
-            Icon(
-                imageVector = if (isSelected) Icons.Rounded.Check else Icons.Rounded.RadioButtonUnchecked,
-                contentDescription = null
-            )
-        },
-        trailingContent = {
-            IconButton(
-                onClick = onDeleteClick,
-                modifier = Modifier.testTag(ShoppingListTestTags.deletePendingItem(item.id))
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.DeleteOutline,
-                    contentDescription = stringResource(R.string.delete_item_content_description, item.name)
-                )
-            }
-        },
+    ShoppingItemRow(
+        name = item.name,
+        leadingIcon = if (isSelected) Icons.Rounded.Check else Icons.Rounded.RadioButtonUnchecked,
+        containerColor = containerColor,
+        deleteTag = ShoppingListTestTags.deletePendingItem(item.id),
+        deleteContentDescription = stringResource(R.string.delete_item_content_description, item.name),
+        onClick = onClick,
+        onDeleteClick = onDeleteClick,
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(containerColor)
-            .clickable(onClick = onClick)
             .semantics { contentDescription = item.name }
             .testTag(ShoppingListTestTags.pendingItem(item.id))
     )
@@ -492,39 +465,70 @@ private fun PurchasedItemRow(
     onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    ListItem(
-        headlineContent = {
-            Text(
-                text = item.name,
-                textDecoration = TextDecoration.LineThrough,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        },
-        leadingContent = {
-            Icon(
-                imageVector = Icons.Rounded.History,
-                contentDescription = null
-            )
-        },
-        trailingContent = {
-            IconButton(
-                onClick = onDeleteClick,
-                modifier = Modifier.testTag(ShoppingListTestTags.deletePurchasedItem(item.id))
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.DeleteOutline,
-                    contentDescription = stringResource(R.string.delete_item_content_description, item.name)
-                )
-            }
-        },
+    ShoppingItemRow(
+        name = item.name,
+        leadingIcon = Icons.Rounded.History,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        deleteTag = ShoppingListTestTags.deletePurchasedItem(item.id),
+        deleteContentDescription = stringResource(R.string.delete_item_content_description, item.name),
+        textDecoration = TextDecoration.LineThrough,
+        rowAlpha = 0.6f,
+        onClick = onClick,
+        onDeleteClick = onDeleteClick,
         modifier = modifier
             .fillMaxWidth()
-            .alpha(0.6f)
-            .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .clickable(onClick = onClick)
             .semantics { contentDescription = item.name }
             .testTag(ShoppingListTestTags.purchasedItem(item.id))
     )
+}
+
+@Composable
+private fun ShoppingItemRow(
+    name: String,
+    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    containerColor: androidx.compose.ui.graphics.Color,
+    deleteTag: String,
+    deleteContentDescription: String,
+    onClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    textDecoration: TextDecoration? = null,
+    rowAlpha: Float = 1f
+) {
+    Row(
+        modifier = modifier
+            .alpha(rowAlpha)
+            .clip(RoundedCornerShape(18.dp))
+            .background(containerColor)
+            .clickable(onClick = onClick)
+            .heightIn(min = 56.dp)
+            .padding(start = 16.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = leadingIcon,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = name,
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textDecoration = textDecoration,
+            modifier = Modifier
+                .weight(1f)
+                .padding(vertical = 12.dp)
+        )
+        IconButton(
+            onClick = onDeleteClick,
+            modifier = Modifier.testTag(deleteTag)
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.DeleteOutline,
+                contentDescription = deleteContentDescription
+            )
+        }
+    }
 }
