@@ -9,6 +9,7 @@ Android shopping list app built with Kotlin, Jetpack Compose, Room, Hilt, Corout
 - supports multi-select purchase confirmation
 - tracks purchase frequency for database-driven ordering
 - includes debug hooks for validation through `adb`
+- keeps debug and production installs isolated on-device
 
 ## Architecture
 
@@ -23,6 +24,7 @@ Android shopping list app built with Kotlin, Jetpack Compose, Room, Hilt, Corout
 - `app/src/main/java/com/jhow/shopplist/domain` - models, repository contract, use cases
 - `app/src/main/java/com/jhow/shopplist/presentation` - ViewModel and Compose UI
 - `app/src/debug` - debug-only adb validation receiver
+- `scripts/deploy-phone.sh` - installs debug builds as in-place phone updates
 
 ## Quality gates
 
@@ -37,12 +39,20 @@ Android shopping list app built with Kotlin, Jetpack Compose, Room, Hilt, Corout
 ./gradlew connectedDebugAndroidTest
 ./gradlew verifyDebugCoverage
 ./gradlew lintDebug
+./scripts/deploy-phone.sh --launch
 ```
+
+## Phone deploy behavior
+
+- debug installs use the package `com.jhow.shopplist.debug`
+- production keeps the package `com.jhow.shopplist`
+- instrumented tests target the debug app only, so they do not touch production data
+- `scripts/deploy-phone.sh` installs with `adb install -r`, which updates the debug app without clearing its database or app data
 
 ## adb validation hooks
 
 ```bash
-adb shell am broadcast -a com.jhow.shopplist.debug.RESET_DB -n com.jhow.shopplist/.debug.DebugCommandReceiver
-adb shell am broadcast -a com.jhow.shopplist.debug.SEED_SAMPLE -n com.jhow.shopplist/.debug.DebugCommandReceiver
-adb shell am broadcast -a com.jhow.shopplist.debug.DUMP_STATE -n com.jhow.shopplist/.debug.DebugCommandReceiver
+adb shell am broadcast -a com.jhow.shopplist.debug.RESET_DB -n com.jhow.shopplist.debug/com.jhow.shopplist.debug.DebugCommandReceiver
+adb shell am broadcast -a com.jhow.shopplist.debug.SEED_SAMPLE -n com.jhow.shopplist.debug/com.jhow.shopplist.debug.DebugCommandReceiver
+adb shell am broadcast -a com.jhow.shopplist.debug.DUMP_STATE -n com.jhow.shopplist.debug/com.jhow.shopplist.debug.DebugCommandReceiver
 ```
