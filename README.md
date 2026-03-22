@@ -57,6 +57,8 @@ Android shopping list app built with Kotlin, Jetpack Compose, Room, Hilt, Corout
 
 - Copy `keystore.properties.example` to `keystore.properties` and fill in your release keystore values, or export the matching `JHOW_SHOPPLIST_RELEASE_*` environment variables.
 - `scripts/deploy-release.sh` refuses to run unless all release signing values are present.
+- Use a dedicated release keystore for `com.jhow.shopplist`; do not sign the production app with the debug keystore.
+- `./scripts/backup-release-keystore.sh DESTINATION_DIR` creates a timestamped backup containing both the release keystore and `keystore.properties`.
 
 ## adb validation hooks
 

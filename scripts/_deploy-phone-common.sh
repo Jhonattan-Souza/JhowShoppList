@@ -77,7 +77,7 @@ EOF
     exit 1
   fi
 
-  INSTALLED_PACKAGE_PATH="$(adb -s "$DEVICE_SERIAL" shell pm path "$PACKAGE_NAME" 2>/dev/null | tr -d '\r')"
+  INSTALLED_PACKAGE_PATH="$(adb -s "$DEVICE_SERIAL" shell pm path "$PACKAGE_NAME" 2>/dev/null | tr -d '\r' || true)"
 
   printf 'Preparing %s deploy\n' "$VARIANT_NAME"
   printf '  device: %s\n' "$DEVICE_SERIAL"

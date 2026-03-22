@@ -75,5 +75,6 @@ Long term maintainability is a core priority. If you add new functionality, firs
 - `./scripts/deploy-debug.sh` always runs `assembleDebug` first, then installs with `adb install -r` so the debug app updates in place without clearing database or app data.
 - `./scripts/deploy-release.sh` always runs `assembleRelease` first, then installs with `adb install -r` so the release app updates in place without clearing database or app data.
 - `./scripts/deploy-phone.sh` intentionally exits with instructions so deploys must go through an explicit debug or release script.
+- `./scripts/backup-release-keystore.sh DESTINATION_DIR` creates a secure local backup of the release keystore plus `keystore.properties`.
 - The debug launcher label is `JhowShoppList Debug` and uses a different icon color to distinguish it from production.
 - `connectedDebugAndroidTest` targets the debug app only and should not affect the production install.
