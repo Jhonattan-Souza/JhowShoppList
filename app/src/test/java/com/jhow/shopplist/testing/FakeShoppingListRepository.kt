@@ -23,6 +23,16 @@ class FakeShoppingListRepository : ShoppingListRepository {
     override fun observePurchasedItems(): Flow<List<ShoppingItem>> =
         items.map { currentItems -> currentItems.filter { it.isPurchased && !it.isDeleted } }
 
+    override fun observeAllItemNames(): Flow<List<String>> = items.map { currentItems ->
+        currentItems
+            .asSequence()
+            .filter { !it.isDeleted }
+            .sortedWith(compareByDescending<ShoppingItem> { it.purchaseCount }.thenBy { it.name.lowercase() })
+            .distinctBy { it.name.lowercase() }
+            .map { it.name }
+            .toList()
+    }
+
     override suspend fun addItem(name: String) {
         addedNames += name
         val now = 1_000L + items.value.size
@@ -37,6 +47,13 @@ class FakeShoppingListRepository : ShoppingListRepository {
             syncStatus = SyncStatus.PENDING_INSERT
         )
     }
+
+    override suspend fun findItemByName(name: String): ShoppingItem? =
+        items.value
+            .asSequence()
+            .filter { !it.isDeleted && it.name.equals(name, ignoreCase = true) }
+            .sortedWith(compareBy<ShoppingItem> { it.isPurchased }.thenByDescending { it.purchaseCount }.thenByDescending { it.updatedAt })
+            .firstOrNull()
 
     override suspend fun markItemsPurchased(ids: Set<String>) {
         purchasedRequests += ids

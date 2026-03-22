@@ -3,10 +3,11 @@ package com.jhow.shopplist.presentation.shoppinglist
 import app.cash.turbine.test
 import com.jhow.shopplist.domain.model.ShoppingItem
 import com.jhow.shopplist.domain.model.SyncStatus
-import com.jhow.shopplist.domain.usecase.AddShoppingItemUseCase
+import com.jhow.shopplist.domain.usecase.AddOrReclaimShoppingItemUseCase
 import com.jhow.shopplist.domain.usecase.DeleteShoppingItemUseCase
 import com.jhow.shopplist.domain.usecase.MarkPurchasedItemPendingUseCase
 import com.jhow.shopplist.domain.usecase.MarkSelectedItemsPurchasedUseCase
+import com.jhow.shopplist.domain.usecase.ObserveItemNamesUseCase
 import com.jhow.shopplist.domain.usecase.ObservePendingItemsUseCase
 import com.jhow.shopplist.domain.usecase.ObservePurchasedItemsUseCase
 import com.jhow.shopplist.domain.usecase.RequestShoppingSyncUseCase
@@ -37,7 +38,8 @@ class ShoppingListViewModelTest {
         viewModel = ShoppingListViewModel(
             observePendingItemsUseCase = ObservePendingItemsUseCase(repository),
             observePurchasedItemsUseCase = ObservePurchasedItemsUseCase(repository),
-            addShoppingItemUseCase = AddShoppingItemUseCase(repository),
+            observeItemNamesUseCase = ObserveItemNamesUseCase(repository),
+            addOrReclaimShoppingItemUseCase = AddOrReclaimShoppingItemUseCase(repository),
             deleteShoppingItemUseCase = DeleteShoppingItemUseCase(repository),
             markSelectedItemsPurchasedUseCase = MarkSelectedItemsPurchasedUseCase(repository),
             markPurchasedItemPendingUseCase = MarkPurchasedItemPendingUseCase(repository),
@@ -53,6 +55,64 @@ class ShoppingListViewModelTest {
         advanceUntilIdle()
 
         assertEquals(listOf("Oats"), repository.addedNames)
+        assertEquals("", viewModel.uiState.value.inputValue)
+        assertEquals(1, syncScheduler.requestCount)
+    }
+
+    @Test
+    fun `typing shows fuzzy matched suggestions`() = runTest {
+        repository.seedItems(
+            listOf(
+                samplePendingItem(id = "milk", name = "Milk"),
+                samplePurchasedItem(id = "almond-milk", name = "Almond Milk"),
+                samplePendingItem(id = "bread", name = "Bread")
+            )
+        )
+        advanceUntilIdle()
+
+        viewModel.onInputValueChange("mil")
+        advanceUntilIdle()
+
+        assertEquals(listOf("Almond Milk", "Milk"), viewModel.uiState.value.suggestions)
+    }
+
+    @Test
+    fun `adding a duplicate pending item clears input without adding`() = runTest {
+        repository.seedItems(listOf(samplePendingItem(id = "oats", name = "Oats")))
+        advanceUntilIdle()
+
+        viewModel.onInputValueChange(" oats ")
+        viewModel.onAddItem()
+        advanceUntilIdle()
+
+        assertEquals(emptyList<String>(), repository.addedNames)
+        assertEquals("", viewModel.uiState.value.inputValue)
+        assertEquals(1, syncScheduler.requestCount)
+    }
+
+    @Test
+    fun `adding a purchased item reclaims it`() = runTest {
+        repository.seedItems(listOf(samplePurchasedItem(id = "beans", name = "Beans")))
+        advanceUntilIdle()
+
+        viewModel.onInputValueChange(" beans ")
+        viewModel.onAddItem()
+        advanceUntilIdle()
+
+        assertEquals(listOf("beans"), repository.pendingRequests)
+        assertEquals(listOf("beans"), viewModel.uiState.value.pendingItems.map { it.id })
+        assertEquals("", viewModel.uiState.value.inputValue)
+    }
+
+    @Test
+    fun `selecting a suggestion submits it`() = runTest {
+        repository.seedItems(listOf(samplePurchasedItem(id = "coffee", name = "Coffee")))
+        advanceUntilIdle()
+
+        viewModel.onSuggestionSelected("Coffee")
+        advanceUntilIdle()
+
+        assertEquals(listOf("coffee"), repository.pendingRequests)
         assertEquals("", viewModel.uiState.value.inputValue)
         assertEquals(1, syncScheduler.requestCount)
     }
@@ -170,9 +230,13 @@ class ShoppingListViewModelTest {
         }
     }
 
-    private fun samplePendingItem(id: String, purchaseCount: Int = 0): ShoppingItem = ShoppingItem(
+    private fun samplePendingItem(
+        id: String,
+        name: String = id,
+        purchaseCount: Int = 0
+    ): ShoppingItem = ShoppingItem(
         id = id,
-        name = id,
+        name = name,
         isPurchased = false,
         purchaseCount = purchaseCount,
         createdAt = 1L,
@@ -181,9 +245,9 @@ class ShoppingListViewModelTest {
         syncStatus = SyncStatus.SYNCED
     )
 
-    private fun samplePurchasedItem(id: String): ShoppingItem = ShoppingItem(
+    private fun samplePurchasedItem(id: String, name: String = id): ShoppingItem = ShoppingItem(
         id = id,
-        name = id,
+        name = name,
         isPurchased = true,
         purchaseCount = 3,
         createdAt = 1L,

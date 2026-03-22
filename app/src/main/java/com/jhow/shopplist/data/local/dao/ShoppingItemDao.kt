@@ -45,6 +45,29 @@ interface ShoppingItemDao {
     )
     suspend fun getPendingSyncItems(): List<ShoppingItemEntity>
 
+    @Query(
+        """
+        SELECT * FROM items
+        WHERE LOWER(name) = LOWER(:name) AND isDeleted = 0
+        ORDER BY isPurchased ASC, purchaseCount DESC, updatedAt DESC
+        LIMIT 1
+        """
+    )
+    suspend fun findItemByName(name: String): ShoppingItemEntity?
+
+    @Query(
+        """
+        SELECT displayName FROM (
+            SELECT MIN(name) AS displayName, MAX(purchaseCount) AS maxPurchaseCount
+            FROM items
+            WHERE isDeleted = 0
+            GROUP BY LOWER(name)
+        )
+        ORDER BY maxPurchaseCount DESC, displayName ASC
+        """
+    )
+    fun observeAllItemNames(): Flow<List<String>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertItem(item: ShoppingItemEntity)
 

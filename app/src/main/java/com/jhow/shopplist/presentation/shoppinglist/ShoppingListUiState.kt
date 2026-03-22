@@ -6,6 +6,7 @@ import com.jhow.shopplist.domain.model.ShoppingItem
 @Immutable
 data class ShoppingListUiState(
     val inputValue: String = "",
+    val suggestions: List<String> = emptyList(),
     val pendingItems: List<ShoppingItem> = emptyList(),
     val purchasedItems: List<ShoppingItem> = emptyList(),
     val selectedIds: Set<String> = emptySet(),

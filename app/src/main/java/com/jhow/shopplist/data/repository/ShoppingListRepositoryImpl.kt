@@ -25,6 +25,8 @@ class ShoppingListRepositoryImpl @Inject constructor(
     override fun observePurchasedItems(): Flow<List<ShoppingItem>> =
         shoppingItemDao.observePurchasedItems().map { items -> items.map { it.toDomain() } }
 
+    override fun observeAllItemNames(): Flow<List<String>> = shoppingItemDao.observeAllItemNames()
+
     override suspend fun addItem(name: String) {
         withContext(ioDispatcher) {
             val now = System.currentTimeMillis()
@@ -41,6 +43,10 @@ class ShoppingListRepositoryImpl @Inject constructor(
                 )
             )
         }
+    }
+
+    override suspend fun findItemByName(name: String): ShoppingItem? = withContext(ioDispatcher) {
+        shoppingItemDao.findItemByName(name)?.toDomain()
     }
 
     override suspend fun markItemsPurchased(ids: Set<String>) {

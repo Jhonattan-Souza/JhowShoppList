@@ -11,6 +11,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -64,6 +65,47 @@ class ShoppingItemDaoTest {
         val items = dao.observePurchasedItems().first()
 
         assertEquals(listOf("Beans", "Rice", "Tea"), items.map { it.name })
+    }
+
+    @Test
+    fun findItemByName_returnsMatchingEntity_caseInsensitive() = runBlocking {
+        dao.insertItems(
+            listOf(
+                entity(id = "pending-milk", name = "Milk"),
+                entity(id = "purchased-milk", name = "MILK", isPurchased = true, purchaseCount = 5)
+            )
+        )
+
+        val item = dao.findItemByName("milk")
+
+        assertEquals("pending-milk", item?.id)
+    }
+
+    @Test
+    fun findItemByName_returnsNullForDeletedItems() = runBlocking {
+        dao.insertItem(entity(id = "deleted-milk", name = "Milk"))
+        dao.softDeleteItem(id = "deleted-milk", updatedAt = 22)
+
+        val item = dao.findItemByName("milk")
+
+        assertNull(item)
+    }
+
+    @Test
+    fun observeAllItemNames_returnsDistinctNonDeletedNames() = runBlocking {
+        dao.insertItems(
+            listOf(
+                entity(id = "beans-pending", name = "Beans", purchaseCount = 1),
+                entity(id = "beans-purchased", name = "Beans", isPurchased = true, purchaseCount = 5),
+                entity(id = "bread", name = "Bread", purchaseCount = 3),
+                entity(id = "deleted", name = "Milk")
+            )
+        )
+        dao.softDeleteItem(id = "deleted", updatedAt = 33)
+
+        val names = dao.observeAllItemNames().first()
+
+        assertEquals(listOf("Beans", "Bread"), names)
     }
 
     @Test
@@ -160,6 +202,7 @@ class ShoppingItemDaoTest {
         isPurchased: Boolean = false,
         purchaseCount: Int = 0,
         updatedAt: Long = 1L,
+        isDeleted: Boolean = false,
         syncStatus: SyncStatus = SyncStatus.SYNCED
     ): ShoppingItemEntity = ShoppingItemEntity(
         id = id,
@@ -168,7 +211,7 @@ class ShoppingItemDaoTest {
         purchaseCount = purchaseCount,
         createdAt = 1L,
         updatedAt = updatedAt,
-        isDeleted = false,
+        isDeleted = isDeleted,
         syncStatus = syncStatus
     )
 }
