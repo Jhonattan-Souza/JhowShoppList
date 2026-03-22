@@ -1,6 +1,7 @@
 package com.jhow.shopplist.data.repository
 
 import com.jhow.shopplist.core.dispatchers.IoDispatcher
+import com.jhow.shopplist.core.search.ShoppingSearch
 import com.jhow.shopplist.data.local.dao.ShoppingItemDao
 import com.jhow.shopplist.data.local.entity.ShoppingItemEntity
 import com.jhow.shopplist.domain.model.ShoppingItem
@@ -46,7 +47,7 @@ class ShoppingListRepositoryImpl @Inject constructor(
     }
 
     override suspend fun findItemByName(name: String): ShoppingItem? = withContext(ioDispatcher) {
-        shoppingItemDao.findItemByName(name)?.toDomain()
+        shoppingItemDao.findItemByNormalizedName(ShoppingSearch.normalize(name))?.toDomain()
     }
 
     override suspend fun markItemsPurchased(ids: Set<String>) {

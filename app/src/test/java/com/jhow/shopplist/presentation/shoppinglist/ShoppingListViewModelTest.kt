@@ -73,7 +73,40 @@ class ShoppingListViewModelTest {
         viewModel.onInputValueChange("mil")
         advanceUntilIdle()
 
-        assertEquals(listOf("Almond Milk", "Milk"), viewModel.uiState.value.suggestions)
+        assertEquals(listOf("Milk", "Almond Milk"), viewModel.uiState.value.suggestions)
+    }
+
+    @Test
+    fun `typing shows accent insensitive suggestions`() = runTest {
+        repository.seedItems(
+            listOf(
+                samplePendingItem(id = "cafe", name = "Café"),
+                samplePendingItem(id = "tea", name = "Tea")
+            )
+        )
+        advanceUntilIdle()
+
+        viewModel.onInputValueChange("cafe")
+        advanceUntilIdle()
+
+        assertEquals(listOf("Café"), viewModel.uiState.value.suggestions)
+    }
+
+    @Test
+    fun `typing shows subsequence fuzzy suggestions`() = runTest {
+        repository.seedItems(
+            listOf(
+                samplePendingItem(id = "home", name = "Home"),
+                samplePendingItem(id = "honey", name = "Honey"),
+                samplePendingItem(id = "bread", name = "Bread")
+            )
+        )
+        advanceUntilIdle()
+
+        viewModel.onInputValueChange("hme")
+        advanceUntilIdle()
+
+        assertEquals(listOf("Home"), viewModel.uiState.value.suggestions)
     }
 
     @Test
@@ -101,6 +134,34 @@ class ShoppingListViewModelTest {
 
         assertEquals(listOf("beans"), repository.pendingRequests)
         assertEquals(listOf("beans"), viewModel.uiState.value.pendingItems.map { it.id })
+        assertEquals("", viewModel.uiState.value.inputValue)
+    }
+
+    @Test
+    fun `adding an accentless duplicate pending item clears input without adding`() = runTest {
+        repository.seedItems(listOf(samplePendingItem(id = "cafe", name = "Café")))
+        advanceUntilIdle()
+
+        viewModel.onInputValueChange("cafe")
+        viewModel.onAddItem()
+        advanceUntilIdle()
+
+        assertEquals(emptyList<String>(), repository.addedNames)
+        assertEquals("", viewModel.uiState.value.inputValue)
+        assertEquals(1, syncScheduler.requestCount)
+    }
+
+    @Test
+    fun `adding an accentless purchased item reclaims it`() = runTest {
+        repository.seedItems(listOf(samplePurchasedItem(id = "cafe", name = "Café")))
+        advanceUntilIdle()
+
+        viewModel.onInputValueChange("cafe")
+        viewModel.onAddItem()
+        advanceUntilIdle()
+
+        assertEquals(listOf("cafe"), repository.pendingRequests)
+        assertEquals(listOf("cafe"), viewModel.uiState.value.pendingItems.map { it.id })
         assertEquals("", viewModel.uiState.value.inputValue)
     }
 

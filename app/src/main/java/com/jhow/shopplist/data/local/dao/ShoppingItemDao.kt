@@ -48,12 +48,12 @@ interface ShoppingItemDao {
     @Query(
         """
         SELECT * FROM items
-        WHERE LOWER(name) = LOWER(:name) AND isDeleted = 0
+        WHERE normalizedName = :normalizedName AND isDeleted = 0
         ORDER BY isPurchased ASC, purchaseCount DESC, updatedAt DESC
         LIMIT 1
         """
     )
-    suspend fun findItemByName(name: String): ShoppingItemEntity?
+    suspend fun findItemByNormalizedName(normalizedName: String): ShoppingItemEntity?
 
     @Query(
         """
@@ -61,7 +61,7 @@ interface ShoppingItemDao {
             SELECT MIN(name) AS displayName, MAX(purchaseCount) AS maxPurchaseCount
             FROM items
             WHERE isDeleted = 0
-            GROUP BY LOWER(name)
+            GROUP BY normalizedName
         )
         ORDER BY maxPurchaseCount DESC, displayName ASC
         """

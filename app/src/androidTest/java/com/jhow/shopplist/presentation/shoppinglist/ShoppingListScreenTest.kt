@@ -141,6 +141,32 @@ class ShoppingListScreenTest {
     }
 
     @Test
+    fun typingAccentlessQueryShowsAccentedSuggestion() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("cafe")
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.suggestionItem("Café")).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        assertTrue(
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.suggestionItem("Café")).fetchSemanticsNodes().isNotEmpty()
+        )
+    }
+
+    @Test
+    fun typingFuzzyQueryShowsSubsequenceSuggestion() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("hme")
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.suggestionItem("Home")).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        assertTrue(
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.suggestionItem("Home")).fetchSemanticsNodes().isNotEmpty()
+        )
+    }
+
+    @Test
     fun overflowingSuggestionListKeepsTopMatchesVisibleNearestTheKeyboard() {
         composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("co")
 
@@ -208,6 +234,25 @@ class ShoppingListScreenTest {
 
         assertTrue(
             composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("pending-apples")).fetchSemanticsNodes().size == 1
+        )
+    }
+
+    @Test
+    fun accentInsensitiveSuggestionSelectionReclaimsTheItem() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("cafe")
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.suggestionItem("Café")).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.suggestionItem("Café")).performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("purchased-cafe")).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        assertTrue(
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("purchased-cafe")).fetchSemanticsNodes().isNotEmpty()
         )
     }
 
@@ -317,6 +362,26 @@ class ShoppingListScreenTest {
             purchaseCount = 1,
             createdAt = 1L,
             updatedAt = 1L,
+            isDeleted = false,
+            syncStatus = SyncStatus.SYNCED
+        ),
+        ShoppingItemEntity(
+            id = "pending-home",
+            name = "Home",
+            isPurchased = false,
+            purchaseCount = 6,
+            createdAt = 1L,
+            updatedAt = 1L,
+            isDeleted = false,
+            syncStatus = SyncStatus.SYNCED
+        ),
+        ShoppingItemEntity(
+            id = "purchased-cafe",
+            name = "Café",
+            isPurchased = true,
+            purchaseCount = 4,
+            createdAt = 1L,
+            updatedAt = 2L,
             isDeleted = false,
             syncStatus = SyncStatus.SYNCED
         )
