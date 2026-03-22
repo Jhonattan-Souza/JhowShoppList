@@ -15,6 +15,7 @@ Android Kotlin shopping-list app built with Jetpack Compose, Room, Hilt, and Cle
 | Full coverage report (unit + instrumented) | `./gradlew jacocoFullReport` |
 | Verify coverage threshold (>= 85%) | `./gradlew verifyDebugCoverage` |
 | Lint check | `./gradlew lintDebug` |
+| Deploy debug app to phone | `./scripts/deploy-phone.sh --launch` |
 
 ## Project Structure
 
@@ -63,3 +64,13 @@ Long term maintainability is a core priority. If you add new functionality, firs
 
 - Unit test coverage must stay >= 85% (enforced by `verifyDebugCoverage`).
 - Always run `./gradlew lintDebug` after making changes.
+
+## Deployment Notes
+
+- Production app package: `com.jhow.shopplist`.
+- Debug app package: `com.jhow.shopplist.debug`.
+- Daily-use install is the production app `com.jhow.shopplist`.
+- Debug install is isolated for local testing, adb hooks, and instrumented tests.
+- `./scripts/deploy-phone.sh` always runs `assembleDebug` first, then installs with `adb install -r` so the debug app updates in place without clearing database or app data.
+- The debug launcher label is `JhowShoppList Debug` and uses a different icon color to distinguish it from production.
+- `connectedDebugAndroidTest` targets the debug app only and should not affect the production install.
