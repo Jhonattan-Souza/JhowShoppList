@@ -45,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -364,7 +365,7 @@ private fun PendingItemRow(
                 text = if (item.purchaseCount == 0) {
                     stringResource(R.string.never_purchased_label)
                 } else {
-                    stringResource(R.string.purchased_count_label, item.purchaseCount)
+                    pluralStringResource(R.plurals.purchased_count_label, item.purchaseCount, item.purchaseCount)
                 }
             )
         },
