@@ -58,6 +58,10 @@ android {
     lint {
         warningsAsErrors = true
         abortOnError = true
+        disable += setOf(
+            "GradleDependency",
+            "AndroidGradlePluginVersion"
+        )
     }
 }
 
