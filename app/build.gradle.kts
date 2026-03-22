@@ -90,7 +90,7 @@ val jacocoExcludes = listOf(
     "**/*ComposableSingletons*.*"
 )
 
-val debugTree = fileTree("${layout.buildDirectory.get().asFile}/tmp/kotlin-classes/debug") {
+val debugTree = fileTree("${layout.buildDirectory.get().asFile}/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes") {
     exclude(jacocoExcludes)
 }
 

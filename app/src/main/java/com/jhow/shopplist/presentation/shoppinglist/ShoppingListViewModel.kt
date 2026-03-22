@@ -2,10 +2,11 @@ package com.jhow.shopplist.presentation.shoppinglist
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.jhow.shopplist.domain.usecase.AddShoppingItemUseCase
+import com.jhow.shopplist.domain.usecase.AddOrReclaimShoppingItemUseCase
 import com.jhow.shopplist.domain.usecase.DeleteShoppingItemUseCase
 import com.jhow.shopplist.domain.usecase.MarkPurchasedItemPendingUseCase
 import com.jhow.shopplist.domain.usecase.MarkSelectedItemsPurchasedUseCase
+import com.jhow.shopplist.domain.usecase.ObserveItemNamesUseCase
 import com.jhow.shopplist.domain.usecase.ObservePendingItemsUseCase
 import com.jhow.shopplist.domain.usecase.ObservePurchasedItemsUseCase
 import com.jhow.shopplist.domain.usecase.RequestShoppingSyncUseCase
@@ -23,7 +24,8 @@ import kotlinx.coroutines.launch
 class ShoppingListViewModel @Inject constructor(
     observePendingItemsUseCase: ObservePendingItemsUseCase,
     observePurchasedItemsUseCase: ObservePurchasedItemsUseCase,
-    private val addShoppingItemUseCase: AddShoppingItemUseCase,
+    observeItemNamesUseCase: ObserveItemNamesUseCase,
+    private val addOrReclaimShoppingItemUseCase: AddOrReclaimShoppingItemUseCase,
     private val deleteShoppingItemUseCase: DeleteShoppingItemUseCase,
     private val markSelectedItemsPurchasedUseCase: MarkSelectedItemsPurchasedUseCase,
     private val markPurchasedItemPendingUseCase: MarkPurchasedItemPendingUseCase,
@@ -33,19 +35,24 @@ class ShoppingListViewModel @Inject constructor(
     private val inputValue = MutableStateFlow("")
     private val selectedIds = MutableStateFlow(emptySet<String>())
     private val itemPendingDeletion = MutableStateFlow<com.jhow.shopplist.domain.model.ShoppingItem?>(null)
+    private val inputWithSuggestions = combine(observeItemNamesUseCase(), inputValue) { allItemNames, currentInput ->
+        currentInput to buildSuggestions(allItemNames = allItemNames, currentInput = currentInput)
+    }
 
     val uiState: StateFlow<ShoppingListUiState> = combine(
         observePendingItemsUseCase(),
         observePurchasedItemsUseCase(),
-        inputValue,
+        inputWithSuggestions,
         selectedIds,
         itemPendingDeletion
-    ) { pendingItems, purchasedItems, currentInput, currentSelection, pendingDeletion ->
+    ) { pendingItems, purchasedItems, currentInputWithSuggestions, currentSelection, pendingDeletion ->
         val pendingIds = pendingItems.mapTo(linkedSetOf(), transform = { it.id })
         val distinctPurchasedItems = purchasedItems.filterNot { it.id in pendingIds }
         val visibleItems = pendingItems + distinctPurchasedItems
+        val (currentInput, currentSuggestions) = currentInputWithSuggestions
         ShoppingListUiState(
             inputValue = currentInput,
+            suggestions = currentSuggestions,
             pendingItems = pendingItems,
             purchasedItems = distinctPurchasedItems,
             selectedIds = currentSelection.intersect(pendingIds),
@@ -61,12 +68,17 @@ class ShoppingListViewModel @Inject constructor(
         inputValue.value = value
     }
 
+    fun onSuggestionSelected(name: String) {
+        inputValue.value = name
+        onAddItem()
+    }
+
     fun onAddItem() {
         val currentValue = inputValue.value
         if (currentValue.isBlank()) return
 
         viewModelScope.launch {
-            addShoppingItemUseCase(currentValue)
+            addOrReclaimShoppingItemUseCase(currentValue)
             inputValue.value = ""
             requestShoppingSyncUseCase()
         }
@@ -113,6 +125,24 @@ class ShoppingListViewModel @Inject constructor(
             selectedIds.update { it - item.id }
             itemPendingDeletion.value = null
             requestShoppingSyncUseCase()
+        }
+    }
+
+    private companion object {
+        const val MIN_SUGGESTION_QUERY_LENGTH = 2
+        const val MAX_SUGGESTION_COUNT = 5
+
+        fun buildSuggestions(allItemNames: List<String>, currentInput: String): List<String> {
+            val normalizedInput = currentInput.trim()
+            if (normalizedInput.length < MIN_SUGGESTION_QUERY_LENGTH) {
+                return emptyList()
+            }
+
+            return allItemNames
+                .asSequence()
+                .filter { it.contains(normalizedInput, ignoreCase = true) }
+                .take(MAX_SUGGESTION_COUNT)
+                .toList()
         }
     }
 }

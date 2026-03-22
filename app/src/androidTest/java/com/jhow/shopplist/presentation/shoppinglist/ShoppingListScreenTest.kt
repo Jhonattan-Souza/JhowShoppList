@@ -96,6 +96,58 @@ class ShoppingListScreenTest {
     }
 
     @Test
+    fun typingShowsSuggestionDropdownWithMatchingItems() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("co")
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.SUGGESTION_LIST).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        assertTrue(
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.SUGGESTION_LIST).fetchSemanticsNodes().isNotEmpty()
+        )
+        assertTrue(
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.suggestionItem("Coffee")).fetchSemanticsNodes().isNotEmpty()
+        )
+    }
+
+    @Test
+    fun tappingSuggestionReclaimsTheItem() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("co")
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.suggestionItem("Coffee")).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.suggestionItem("Coffee")).performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("purchased-coffee")).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        assertTrue(
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("purchased-coffee")).fetchSemanticsNodes().isNotEmpty()
+        )
+    }
+
+    @Test
+    fun duplicatePendingSuggestionSelectionDoesNotCreateDuplicate() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("ap")
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.suggestionItem("Apples")).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.suggestionItem("Apples")).performClick()
+
+        composeRule.waitForIdle()
+
+        assertTrue(
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("pending-apples")).fetchSemanticsNodes().size == 1
+        )
+    }
+
+    @Test
     fun deletingPendingItemRemovesItFromVisibleLists() {
         composeRule.onNodeWithTag(ShoppingListTestTags.deletePendingItem("pending-apples")).performClick()
         composeRule.onNodeWithText("Delete").performClick()

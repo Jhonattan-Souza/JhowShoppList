@@ -35,6 +35,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -70,6 +71,7 @@ fun ShoppingListRoute(
         uiState = uiState.value,
         onInputValueChange = viewModel::onInputValueChange,
         onAddItem = viewModel::onAddItem,
+        onSuggestionSelected = viewModel::onSuggestionSelected,
         onPendingItemClick = viewModel::onPendingItemClicked,
         onPurchasedItemClick = viewModel::onPurchasedItemClicked,
         onPurchaseSelectedItems = viewModel::onPurchaseSelectedItems,
@@ -85,6 +87,7 @@ fun ShoppingListScreen(
     uiState: ShoppingListUiState,
     onInputValueChange: (String) -> Unit,
     onAddItem: () -> Unit,
+    onSuggestionSelected: (String) -> Unit,
     onPendingItemClick: (String) -> Unit,
     onPurchasedItemClick: (String) -> Unit,
     onPurchaseSelectedItems: () -> Unit,
@@ -114,8 +117,10 @@ fun ShoppingListScreen(
         bottomBar = {
             ShoppingInputBar(
                 value = uiState.inputValue,
+                suggestions = uiState.suggestions,
                 onValueChange = onInputValueChange,
-                onDone = onAddItem
+                onDone = onAddItem,
+                onSuggestionSelected = onSuggestionSelected
             )
         },
         floatingActionButton = {
@@ -155,11 +160,13 @@ fun ShoppingListScreen(
 @Composable
 private fun ShoppingInputBar(
     value: String,
+    suggestions: List<String>,
     onValueChange: (String) -> Unit,
     onDone: () -> Unit,
+    onSuggestionSelected: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
@@ -183,6 +190,34 @@ private fun ShoppingInputBar(
                 )
             }
         )
+
+        AnimatedVisibility(visible = suggestions.isNotEmpty()) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+                    .testTag(ShoppingListTestTags.SUGGESTION_LIST),
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow
+            ) {
+                Column {
+                    suggestions.forEachIndexed { index, suggestion ->
+                        if (index > 0) {
+                            HorizontalDivider()
+                        }
+                        Text(
+                            text = suggestion,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSuggestionSelected(suggestion) }
+                                .padding(horizontal = 16.dp, vertical = 14.dp)
+                                .testTag(ShoppingListTestTags.suggestionItem(suggestion))
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

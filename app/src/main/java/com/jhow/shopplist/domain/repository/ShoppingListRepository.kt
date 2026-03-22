@@ -9,7 +9,11 @@ interface ShoppingListRepository {
 
     fun observePurchasedItems(): Flow<List<ShoppingItem>>
 
+    fun observeAllItemNames(): Flow<List<String>>
+
     suspend fun addItem(name: String)
+
+    suspend fun findItemByName(name: String): ShoppingItem?
 
     suspend fun markItemsPurchased(ids: Set<String>)
 
