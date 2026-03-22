@@ -8,11 +8,6 @@
     <string name="purchased_items_title">Purchased history</string>
     <string name="empty_pending_title">Nothing pending yet</string>
     <string name="empty_purchased_title">No purchase history</string>
-    <string name="never_purchased_label">Never purchased before</string>
-    <plurals name="purchased_count_label">
-        <item quantity="one">Purchased %1$d time</item>
-        <item quantity="other">Purchased %1$d times</item>
-    </plurals>
     <string name="delete_item_title">Delete item</string>
     <string name="delete_item_message">Remove %1$s from the local list and queue the deletion for sync?</string>
     <string name="delete_item_confirm">Delete</string>
