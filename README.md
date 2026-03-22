@@ -24,7 +24,8 @@ Android shopping list app built with Kotlin, Jetpack Compose, Room, Hilt, Corout
 - `app/src/main/java/com/jhow/shopplist/domain` - models, repository contract, use cases
 - `app/src/main/java/com/jhow/shopplist/presentation` - ViewModel and Compose UI
 - `app/src/debug` - debug-only adb validation receiver
-- `scripts/deploy-phone.sh` - installs debug builds as in-place phone updates
+- `scripts/deploy-debug.sh` - installs debug builds as in-place phone updates
+- `scripts/deploy-release.sh` - installs signed release builds as in-place phone updates
 
 ## Quality gates
 
@@ -39,7 +40,8 @@ Android shopping list app built with Kotlin, Jetpack Compose, Room, Hilt, Corout
 ./gradlew connectedDebugAndroidTest
 ./gradlew verifyDebugCoverage
 ./gradlew lintDebug
-./scripts/deploy-phone.sh --launch
+./scripts/deploy-debug.sh --launch
+./scripts/deploy-release.sh --launch
 ```
 
 ## Phone deploy behavior
@@ -47,7 +49,14 @@ Android shopping list app built with Kotlin, Jetpack Compose, Room, Hilt, Corout
 - debug installs use the package `com.jhow.shopplist.debug`
 - production keeps the package `com.jhow.shopplist`
 - instrumented tests target the debug app only, so they do not touch production data
-- `scripts/deploy-phone.sh` installs with `adb install -r`, which updates the debug app without clearing its database or app data
+- `scripts/deploy-debug.sh` installs `com.jhow.shopplist.debug` with `adb install -r`, which updates the debug app without clearing its database or app data
+- `scripts/deploy-release.sh` installs `com.jhow.shopplist` with `adb install -r`, which updates the release app without clearing its database or app data
+- `scripts/deploy-phone.sh` now exits with a warning so you must choose the debug or release path explicitly
+
+## Release signing
+
+- Copy `keystore.properties.example` to `keystore.properties` and fill in your release keystore values, or export the matching `JHOW_SHOPPLIST_RELEASE_*` environment variables.
+- `scripts/deploy-release.sh` refuses to run unless all release signing values are present.
 
 ## adb validation hooks
 
