@@ -107,14 +107,7 @@ fun ShoppingListScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(text = stringResource(R.string.shopping_list_title))
-                        Text(
-                            text = stringResource(R.string.shopping_list_subtitle),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Text(text = stringResource(R.string.shopping_list_title))
                 }
             )
         },
@@ -209,7 +202,6 @@ private fun ShoppingItemsContent(
         item(key = ShoppingListTestTags.PENDING_SECTION) {
             SectionHeader(
                 title = stringResource(R.string.pending_items_title),
-                subtitle = stringResource(R.string.pending_items_subtitle),
                 modifier = Modifier.testTag(ShoppingListTestTags.PENDING_SECTION)
             )
         }
@@ -218,7 +210,6 @@ private fun ShoppingItemsContent(
             item(key = ShoppingListTestTags.EMPTY_STATE) {
                 EmptyStateCard(
                     title = stringResource(R.string.empty_pending_title),
-                    subtitle = stringResource(R.string.empty_pending_subtitle),
                     modifier = Modifier.testTag(ShoppingListTestTags.EMPTY_STATE)
                 )
             }
@@ -243,7 +234,6 @@ private fun ShoppingItemsContent(
         item(key = ShoppingListTestTags.PURCHASED_SECTION) {
             SectionHeader(
                 title = stringResource(R.string.purchased_items_title),
-                subtitle = stringResource(R.string.purchased_items_subtitle),
                 modifier = Modifier.testTag(ShoppingListTestTags.PURCHASED_SECTION)
             )
         }
@@ -251,8 +241,7 @@ private fun ShoppingItemsContent(
         if (uiState.purchasedItems.isEmpty()) {
             item(key = "purchased_empty") {
                 EmptyStateCard(
-                    title = stringResource(R.string.empty_purchased_title),
-                    subtitle = stringResource(R.string.empty_purchased_subtitle)
+                    title = stringResource(R.string.empty_purchased_title)
                 )
             }
         } else {
@@ -299,49 +288,32 @@ private fun DeleteItemDialog(
 @Composable
 private fun SectionHeader(
     title: String,
-    subtitle: String,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(2.dp)
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.SemiBold,
+        modifier = modifier.fillMaxWidth()
+    )
 }
 
 @Composable
 private fun EmptyStateCard(
     title: String,
-    subtitle: String,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+            .padding(20.dp)
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Medium
-        )
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -419,9 +391,6 @@ private fun PurchasedItemRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-        },
-        supportingContent = {
-            Text(text = stringResource(R.string.restore_to_pending_label))
         },
         leadingContent = {
             Icon(
