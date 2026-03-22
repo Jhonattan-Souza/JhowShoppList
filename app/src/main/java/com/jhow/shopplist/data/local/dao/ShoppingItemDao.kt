@@ -36,6 +36,15 @@ interface ShoppingItemDao {
     )
     suspend fun getAllItems(): List<ShoppingItemEntity>
 
+    @Query(
+        """
+        SELECT * FROM items
+        WHERE syncStatus != 'SYNCED'
+        ORDER BY updatedAt ASC
+        """
+    )
+    suspend fun getPendingSyncItems(): List<ShoppingItemEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertItem(item: ShoppingItemEntity)
 
@@ -74,9 +83,37 @@ interface ShoppingItemDao {
     )
     suspend fun markItemPending(id: String, updatedAt: Long): Int
 
+    @Query(
+        """
+        UPDATE items
+        SET isDeleted = 1,
+            updatedAt = :updatedAt,
+            syncStatus = 'PENDING_DELETE'
+        WHERE id = :id AND isDeleted = 0
+        """
+    )
+    suspend fun softDeleteItem(id: String, updatedAt: Long): Int
+
+    @Query(
+        """
+        UPDATE items
+        SET updatedAt = :updatedAt,
+            syncStatus = 'SYNCED'
+        WHERE id = :id
+        """
+    )
+    suspend fun markItemSynced(id: String, updatedAt: Long): Int
+
     @Transaction
     suspend fun replaceAll(items: List<ShoppingItemEntity>) {
         deleteAll()
         insertItems(items)
+    }
+
+    @Transaction
+    suspend fun markItemsSynced(items: Map<String, Long>) {
+        items.forEach { (id, updatedAt) ->
+            markItemSynced(id = id, updatedAt = updatedAt)
+        }
     }
 }

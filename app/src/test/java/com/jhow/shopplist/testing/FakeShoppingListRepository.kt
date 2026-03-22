@@ -1,6 +1,7 @@
 package com.jhow.shopplist.testing
 
 import com.jhow.shopplist.domain.model.ShoppingItem
+import com.jhow.shopplist.domain.model.ShoppingItemSyncResult
 import com.jhow.shopplist.domain.model.SyncStatus
 import com.jhow.shopplist.domain.repository.ShoppingListRepository
 import kotlinx.coroutines.flow.Flow
@@ -13,12 +14,14 @@ class FakeShoppingListRepository : ShoppingListRepository {
     val addedNames = mutableListOf<String>()
     val purchasedRequests = mutableListOf<Set<String>>()
     val pendingRequests = mutableListOf<String>()
+    val deletedRequests = mutableListOf<String>()
+    val syncedResults = mutableListOf<List<ShoppingItemSyncResult>>()
 
     override fun observePendingItems(): Flow<List<ShoppingItem>> =
-        items.map { currentItems -> currentItems.filterNot(ShoppingItem::isPurchased) }
+        items.map { currentItems -> currentItems.filter { !it.isPurchased && !it.isDeleted } }
 
     override fun observePurchasedItems(): Flow<List<ShoppingItem>> =
-        items.map { currentItems -> currentItems.filter(ShoppingItem::isPurchased) }
+        items.map { currentItems -> currentItems.filter { it.isPurchased && !it.isDeleted } }
 
     override suspend fun addItem(name: String) {
         addedNames += name
@@ -71,6 +74,36 @@ class FakeShoppingListRepository : ShoppingListRepository {
             } else {
                 item
             }
+        }
+    }
+
+    override suspend fun softDeleteItem(id: String) {
+        deletedRequests += id
+        items.value = items.value.map { item ->
+            if (item.id == id && !item.isDeleted) {
+                item.copy(
+                    isDeleted = true,
+                    updatedAt = item.updatedAt + 100,
+                    syncStatus = SyncStatus.PENDING_DELETE
+                )
+            } else {
+                item
+            }
+        }
+    }
+
+    override suspend fun getPendingSyncItems(): List<ShoppingItem> =
+        items.value.filter { it.syncStatus != SyncStatus.SYNCED }
+
+    override suspend fun markItemsSynced(results: List<ShoppingItemSyncResult>) {
+        syncedResults += results
+        val resultMap = results.associateBy(ShoppingItemSyncResult::id)
+        items.value = items.value.map { item ->
+            val result = resultMap[item.id] ?: return@map item
+            item.copy(
+                updatedAt = result.serverUpdatedAt,
+                syncStatus = SyncStatus.SYNCED
+            )
         }
     }
 

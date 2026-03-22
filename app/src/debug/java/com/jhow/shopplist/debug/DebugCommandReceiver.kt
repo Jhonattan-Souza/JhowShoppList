@@ -5,8 +5,10 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import androidx.work.WorkManager
 import com.jhow.shopplist.data.local.db.AppDatabase
 import com.jhow.shopplist.data.local.entity.ShoppingItemEntity
+import com.jhow.shopplist.data.sync.ShoppingSyncWorker
 import com.jhow.shopplist.di.DatabaseEntryPoint
 import com.jhow.shopplist.domain.model.SyncStatus
 import dagger.hilt.android.EntryPointAccessors
@@ -33,6 +35,18 @@ class DebugCommandReceiver : BroadcastReceiver() {
                 ACTION_SEED_SAMPLE -> {
                     database.shoppingItemDao().replaceAll(sampleItems())
                     "Sample items seeded"
+                }
+
+                ACTION_SEED_PENDING_SYNC -> {
+                    database.shoppingItemDao().replaceAll(pendingSyncItems())
+                    "Pending sync items seeded"
+                }
+
+                ACTION_TRIGGER_SYNC -> {
+                    WorkManager.getInstance(context.applicationContext).enqueue(
+                        androidx.work.OneTimeWorkRequestBuilder<ShoppingSyncWorker>().build()
+                    )
+                    "Sync requested"
                 }
 
                 ACTION_DUMP_STATE -> buildDump(database)
@@ -90,9 +104,48 @@ class DebugCommandReceiver : BroadcastReceiver() {
             )
         )
     }
+
+    private fun pendingSyncItems(): List<ShoppingItemEntity> {
+        val now = System.currentTimeMillis()
+        return listOf(
+            ShoppingItemEntity(
+                id = "pending-insert-oats",
+                name = "Oats",
+                isPurchased = false,
+                purchaseCount = 0,
+                createdAt = now - 6_000,
+                updatedAt = now - 6_000,
+                isDeleted = false,
+                syncStatus = SyncStatus.PENDING_INSERT
+            ),
+            ShoppingItemEntity(
+                id = "pending-update-tea",
+                name = "Tea",
+                isPurchased = true,
+                purchaseCount = 3,
+                createdAt = now - 5_000,
+                updatedAt = now - 5_000,
+                isDeleted = false,
+                syncStatus = SyncStatus.PENDING_UPDATE
+            ),
+            ShoppingItemEntity(
+                id = "pending-delete-limes",
+                name = "Limes",
+                isPurchased = false,
+                purchaseCount = 1,
+                createdAt = now - 4_000,
+                updatedAt = now - 4_000,
+                isDeleted = true,
+                syncStatus = SyncStatus.PENDING_DELETE
+            )
+        )
+    }
+
     companion object {
         const val ACTION_RESET_DB: String = "com.jhow.shopplist.debug.RESET_DB"
         const val ACTION_SEED_SAMPLE: String = "com.jhow.shopplist.debug.SEED_SAMPLE"
+        const val ACTION_SEED_PENDING_SYNC: String = "com.jhow.shopplist.debug.SEED_PENDING_SYNC"
+        const val ACTION_TRIGGER_SYNC: String = "com.jhow.shopplist.debug.TRIGGER_SYNC"
         const val ACTION_DUMP_STATE: String = "com.jhow.shopplist.debug.DUMP_STATE"
         private const val LOG_TAG: String = "DebugCommandReceiver"
     }

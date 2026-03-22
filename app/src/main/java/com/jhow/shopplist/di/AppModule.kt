@@ -2,11 +2,16 @@ package com.jhow.shopplist.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.work.WorkManager
 import com.jhow.shopplist.data.local.dao.ShoppingItemDao
 import com.jhow.shopplist.data.local.db.AppDatabase
 import com.jhow.shopplist.data.repository.ShoppingListRepositoryImpl
+import com.jhow.shopplist.data.sync.FakeShoppingListSyncGateway
+import com.jhow.shopplist.data.sync.WorkManagerShoppingSyncScheduler
 import com.jhow.shopplist.domain.repository.ShoppingListRepository
 import com.jhow.shopplist.core.dispatchers.IoDispatcher
+import com.jhow.shopplist.domain.sync.ShoppingListSyncGateway
+import com.jhow.shopplist.domain.sync.ShoppingSyncScheduler
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -25,6 +30,18 @@ abstract class AppBindModule {
     abstract fun bindShoppingListRepository(
         impl: ShoppingListRepositoryImpl
     ): ShoppingListRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindShoppingSyncScheduler(
+        impl: WorkManagerShoppingSyncScheduler
+    ): ShoppingSyncScheduler
+
+    @Binds
+    @Singleton
+    abstract fun bindShoppingListSyncGateway(
+        impl: FakeShoppingListSyncGateway
+    ): ShoppingListSyncGateway
 }
 
 @Module
@@ -37,6 +54,10 @@ object AppModule {
 
     @Provides
     fun provideShoppingItemDao(database: AppDatabase): ShoppingItemDao = database.shoppingItemDao()
+
+    @Provides
+    @Singleton
+    fun provideWorkManager(@ApplicationContext context: Context): WorkManager = WorkManager.getInstance(context)
 
     @Provides
     @IoDispatcher

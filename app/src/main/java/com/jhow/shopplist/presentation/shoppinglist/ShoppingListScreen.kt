@@ -22,16 +22,20 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AddTask
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Restore
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -65,7 +69,10 @@ fun ShoppingListRoute(
         onAddItem = viewModel::onAddItem,
         onPendingItemClick = viewModel::onPendingItemClicked,
         onPurchasedItemClick = viewModel::onPurchasedItemClicked,
-        onPurchaseSelectedItems = viewModel::onPurchaseSelectedItems
+        onPurchaseSelectedItems = viewModel::onPurchaseSelectedItems,
+        onDeleteItemRequested = viewModel::onDeleteItemRequested,
+        onDeleteItemDismissed = viewModel::onDeleteItemDismissed,
+        onDeleteItemConfirmed = viewModel::onDeleteItemConfirmed
     )
 }
 
@@ -78,6 +85,9 @@ fun ShoppingListScreen(
     onPendingItemClick: (String) -> Unit,
     onPurchasedItemClick: (String) -> Unit,
     onPurchaseSelectedItems: () -> Unit,
+    onDeleteItemRequested: (ShoppingItem) -> Unit,
+    onDeleteItemDismissed: () -> Unit,
+    onDeleteItemConfirmed: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -128,7 +138,14 @@ fun ShoppingListScreen(
             uiState = uiState,
             onPendingItemClick = onPendingItemClick,
             onPurchasedItemClick = onPurchasedItemClick,
+            onDeleteItemRequested = onDeleteItemRequested,
             modifier = Modifier.padding(innerPadding)
+        )
+
+        DeleteItemDialog(
+            item = uiState.itemPendingDeletion,
+            onDismiss = onDeleteItemDismissed,
+            onConfirm = onDeleteItemConfirmed
         )
     }
 }
@@ -172,6 +189,7 @@ private fun ShoppingItemsContent(
     uiState: ShoppingListUiState,
     onPendingItemClick: (String) -> Unit,
     onPurchasedItemClick: (String) -> Unit,
+    onDeleteItemRequested: (ShoppingItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -203,7 +221,8 @@ private fun ShoppingItemsContent(
                 PendingItemRow(
                     item = item,
                     isSelected = item.id in uiState.selectedIds,
-                    onClick = { onPendingItemClick(item.id) }
+                    onClick = { onPendingItemClick(item.id) },
+                    onDeleteClick = { onDeleteItemRequested(item) }
                 )
             }
         }
@@ -234,11 +253,38 @@ private fun ShoppingItemsContent(
             ) { item ->
                 PurchasedItemRow(
                     item = item,
-                    onClick = { onPurchasedItemClick(item.id) }
+                    onClick = { onPurchasedItemClick(item.id) },
+                    onDeleteClick = { onDeleteItemRequested(item) }
                 )
             }
         }
     }
+}
+
+@Composable
+private fun DeleteItemDialog(
+    item: ShoppingItem?,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    if (item == null) return
+
+    AlertDialog(
+        modifier = Modifier.testTag(ShoppingListTestTags.DELETE_ITEM_DIALOG),
+        onDismissRequest = onDismiss,
+        title = { Text(text = stringResource(R.string.delete_item_title)) },
+        text = { Text(text = stringResource(R.string.delete_item_message, item.name)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(text = stringResource(R.string.delete_item_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(R.string.delete_item_cancel))
+            }
+        }
+    )
 }
 
 @Composable
@@ -296,6 +342,7 @@ private fun PendingItemRow(
     item: ShoppingItem,
     isSelected: Boolean,
     onClick: () -> Unit,
+    onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val containerColor = if (isSelected) {
@@ -327,6 +374,17 @@ private fun PendingItemRow(
                 contentDescription = null
             )
         },
+        trailingContent = {
+            IconButton(
+                onClick = onDeleteClick,
+                modifier = Modifier.testTag(ShoppingListTestTags.deletePendingItem(item.id))
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.DeleteOutline,
+                    contentDescription = stringResource(R.string.delete_item_content_description, item.name)
+                )
+            }
+        },
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(24.dp))
@@ -341,6 +399,7 @@ private fun PendingItemRow(
 private fun PurchasedItemRow(
     item: ShoppingItem,
     onClick: () -> Unit,
+    onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     ListItem(
@@ -362,10 +421,15 @@ private fun PurchasedItemRow(
             )
         },
         trailingContent = {
-            Icon(
-                imageVector = Icons.Rounded.Restore,
-                contentDescription = null
-            )
+            IconButton(
+                onClick = onDeleteClick,
+                modifier = Modifier.testTag(ShoppingListTestTags.deletePurchasedItem(item.id))
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.DeleteOutline,
+                    contentDescription = stringResource(R.string.delete_item_content_description, item.name)
+                )
+            }
         },
         modifier = modifier
             .fillMaxWidth()
