@@ -37,7 +37,7 @@ class ShoppingListSyncMenuTest {
                 onSyncMenuDismissed = {},
                 onSyncSettingsRequested = {},
                 onSyncSettingsDismissed = {},
-                onSyncSettingsSaved = { _ -> },
+                onSyncSettingsSaved = {},
                 onSyncNowRequested = { syncNowClicked = true },
                 onConfirmCreateMissingList = {}
             )
