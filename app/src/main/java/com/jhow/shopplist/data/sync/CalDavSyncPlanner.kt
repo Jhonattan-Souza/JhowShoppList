@@ -3,6 +3,7 @@ package com.jhow.shopplist.data.sync
 import com.jhow.shopplist.domain.model.RemoteShoppingItemSnapshot
 import com.jhow.shopplist.domain.model.ShoppingItem
 import com.jhow.shopplist.domain.model.SyncStatus
+import javax.inject.Inject
 
 data class CalDavSyncPlan(
     val itemsToPush: List<ShoppingItem>,
@@ -10,7 +11,7 @@ data class CalDavSyncPlan(
     val remoteUidsToDeleteLocally: Set<String>
 )
 
-class CalDavSyncPlanner {
+class CalDavSyncPlanner @Inject constructor() {
     fun plan(localItems: List<ShoppingItem>, remoteItems: List<RemoteShoppingItemSnapshot>): CalDavSyncPlan {
         val remoteByUid = remoteItems.associateBy { it.remoteUid }
         val localByUid = localItems.mapNotNull { local ->

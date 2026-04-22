@@ -21,6 +21,7 @@ class FakeShoppingListRepository : ShoppingListRepository {
     val remoteDeletedRequests = mutableListOf<String>()
     val syncedResults = mutableListOf<List<ShoppingItemSyncResult>>()
     val importedItems = mutableListOf<RemoteShoppingItemSnapshot>()
+    var applyRemoteDeletesCallCount = 0
 
     override fun observePendingItems(): Flow<List<ShoppingItem>> =
         items.map { currentItems -> currentItems.filter { !it.isPurchased && !it.isDeleted } }
@@ -148,6 +149,7 @@ class FakeShoppingListRepository : ShoppingListRepository {
     }
 
     override suspend fun applyRemoteDeletes(remoteUids: Set<String>) {
+        applyRemoteDeletesCallCount++
         items.value = items.value.map { item ->
             if (item.remoteMetadata.remoteUid in remoteUids && !item.isDeleted) {
                 remoteDeletedRequests += item.id
