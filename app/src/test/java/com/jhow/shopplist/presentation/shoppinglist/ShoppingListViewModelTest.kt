@@ -323,14 +323,17 @@ class ShoppingListViewModelTest {
         assertEquals("https://dav.example.com", viewModel.uiState.value.syncSettings.serverUrl)
 
         viewModel.onSyncSettingsSaved(
-            enabled = true,
-            serverUrl = "https://dav.example.com",
-            username = "jhow",
-            listName = "Groceries",
-            password = "secret"
+            ShoppingListSyncSettingsUiState(
+                enabled = true,
+                serverUrl = "https://dav.example.com",
+                username = "jhow",
+                listName = "Groceries",
+                password = "secret"
+            )
         )
         advanceUntilIdle()
 
+        assertEquals("Groceries", configRepository.currentConfig.listName)
         assertEquals(1, syncScheduler.requestCount)
     }
 

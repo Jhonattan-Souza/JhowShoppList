@@ -24,24 +24,35 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.material.icons.rounded.AddTask
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Surface
@@ -52,6 +63,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -77,6 +89,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jhow.shopplist.R
+import com.jhow.shopplist.domain.model.CalDavPendingAction
+import com.jhow.shopplist.domain.model.CalDavSyncState
 import com.jhow.shopplist.domain.model.ShoppingItem
 
 @Composable
@@ -94,7 +108,14 @@ fun ShoppingListRoute(
         onPurchaseSelectedItems = viewModel::onPurchaseSelectedItems,
         onDeleteItemRequested = viewModel::onDeleteItemRequested,
         onDeleteItemDismissed = viewModel::onDeleteItemDismissed,
-        onDeleteItemConfirmed = viewModel::onDeleteItemConfirmed
+        onDeleteItemConfirmed = viewModel::onDeleteItemConfirmed,
+        onSyncMenuClicked = viewModel::onSyncMenuClicked,
+        onSyncMenuDismissed = viewModel::onSyncMenuDismissed,
+        onSyncSettingsRequested = viewModel::onSyncSettingsRequested,
+        onSyncSettingsDismissed = viewModel::onSyncSettingsDismissed,
+        onSyncSettingsSaved = viewModel::onSyncSettingsSaved,
+        onSyncNowRequested = viewModel::onSyncNowRequested,
+        onConfirmCreateMissingList = viewModel::onConfirmCreateMissingList
     )
 }
 
@@ -111,6 +132,13 @@ fun ShoppingListScreen(
     onDeleteItemRequested: (ShoppingItem) -> Unit,
     onDeleteItemDismissed: () -> Unit,
     onDeleteItemConfirmed: () -> Unit,
+    onSyncMenuClicked: () -> Unit,
+    onSyncMenuDismissed: () -> Unit,
+    onSyncSettingsRequested: () -> Unit,
+    onSyncSettingsDismissed: () -> Unit,
+    onSyncSettingsSaved: (ShoppingListSyncSettingsUiState) -> Unit,
+    onSyncNowRequested: () -> Unit,
+    onConfirmCreateMissingList: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val focusManager = LocalFocusManager.current
@@ -133,6 +161,35 @@ fun ShoppingListScreen(
             TopAppBar(
                 title = {
                     Text(text = stringResource(R.string.shopping_list_title))
+                },
+                actions = {
+                    Box {
+                        IconButton(
+                            onClick = onSyncMenuClicked,
+                            modifier = Modifier.testTag(ShoppingListTestTags.SYNC_MENU_BUTTON)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.MoreVert,
+                                contentDescription = stringResource(R.string.sync_menu_open)
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = uiState.isSyncMenuExpanded,
+                            onDismissRequest = onSyncMenuDismissed
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.sync_now)) },
+                                onClick = onSyncNowRequested,
+                                modifier = Modifier.testTag(ShoppingListTestTags.SYNC_NOW_MENU_ITEM)
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.sync_settings)) },
+                                onClick = onSyncSettingsRequested,
+                                modifier = Modifier.testTag(ShoppingListTestTags.SYNC_SETTINGS_MENU_ITEM)
+                            )
+                        }
+                    }
                 }
             )
         },
@@ -173,6 +230,150 @@ fun ShoppingListScreen(
             onDismiss = onDeleteItemDismissed,
             onConfirm = onDeleteItemConfirmed
         )
+
+        if (uiState.isSyncSettingsVisible) {
+            val settings = uiState.syncSettings
+            var enabled by remember { mutableStateOf(settings.enabled) }
+            var serverUrl by remember { mutableStateOf(settings.serverUrl) }
+            var username by remember { mutableStateOf(settings.username) }
+            var password by remember { mutableStateOf(settings.password) }
+            var listName by remember { mutableStateOf(settings.listName) }
+
+            ModalBottomSheet(
+                onDismissRequest = onSyncSettingsDismissed,
+                modifier = Modifier.testTag(ShoppingListTestTags.SYNC_SETTINGS_SHEET)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp)
+                        .testTag(ShoppingListTestTags.SYNC_SETTINGS_SHEET_CONTENT)
+                ) {
+                    Text(
+                        text = stringResource(R.string.sync_settings),
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(R.string.sync_enabled_label),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Switch(
+                            checked = enabled,
+                            onCheckedChange = { enabled = it },
+                            modifier = Modifier.testTag(ShoppingListTestTags.SYNC_ENABLED_SWITCH)
+                        )
+                    }
+
+                    Text(
+                        text = stringResource(R.string.sync_state_label, syncStateLabel(settings.syncState)),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                            .testTag(ShoppingListTestTags.SYNC_STATE_TEXT)
+                    )
+
+                    OutlinedTextField(
+                        value = serverUrl,
+                        onValueChange = { serverUrl = it },
+                        label = { Text(stringResource(R.string.sync_server_label)) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                            .testTag(ShoppingListTestTags.SYNC_SERVER_FIELD),
+                        singleLine = true
+                    )
+
+                    OutlinedTextField(
+                        value = username,
+                        onValueChange = { username = it },
+                        label = { Text(stringResource(R.string.sync_username_label)) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                            .testTag(ShoppingListTestTags.SYNC_USERNAME_FIELD),
+                        singleLine = true
+                    )
+
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text(stringResource(R.string.sync_password_label)) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                            .testTag(ShoppingListTestTags.SYNC_PASSWORD_FIELD),
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                    )
+
+                    OutlinedTextField(
+                        value = listName,
+                        onValueChange = { listName = it },
+                        label = { Text(stringResource(R.string.sync_list_name_label)) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                            .testTag(ShoppingListTestTags.SYNC_LIST_NAME_FIELD),
+                        singleLine = true
+                    )
+
+                    if (settings.statusMessage != null) {
+                        Text(
+                            text = settings.statusMessage,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp)
+                                .testTag(ShoppingListTestTags.SYNC_STATUS_TEXT)
+                        )
+                    }
+
+                    if (settings.pendingAction == CalDavPendingAction.CreateMissingList) {
+                        Button(
+                            onClick = onConfirmCreateMissingList,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp)
+                                .testTag(ShoppingListTestTags.SYNC_CREATE_LIST_BUTTON)
+                        ) {
+                            Text(stringResource(R.string.sync_create_missing_list))
+                        }
+                    }
+
+                    Button(
+                        onClick = {
+                            onSyncSettingsSaved(
+                                settings.copy(
+                                    enabled = enabled,
+                                    serverUrl = serverUrl,
+                                    username = username,
+                                    password = password,
+                                    listName = listName
+                                )
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag(ShoppingListTestTags.SYNC_SAVE_BUTTON)
+                    ) {
+                        Text(stringResource(R.string.sync_save))
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -587,4 +788,18 @@ private fun SwipeDeleteBackground(
             else MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
+}
+
+@Composable
+private fun syncStateLabel(state: CalDavSyncState): String = when (state) {
+    CalDavSyncState.Disabled -> stringResource(R.string.sync_state_disabled)
+    CalDavSyncState.Idle -> stringResource(R.string.sync_state_idle)
+    CalDavSyncState.Syncing -> stringResource(R.string.sync_state_syncing)
+    CalDavSyncState.Success -> stringResource(R.string.sync_state_success)
+    CalDavSyncState.AuthError -> stringResource(R.string.sync_state_auth_error)
+    CalDavSyncState.NetworkError -> stringResource(R.string.sync_state_network_error)
+    CalDavSyncState.MissingList -> stringResource(R.string.sync_state_missing_list)
+    CalDavSyncState.AmbiguousListName -> stringResource(R.string.sync_state_ambiguous_list_name)
+    CalDavSyncState.UserActionRequired -> stringResource(R.string.sync_state_user_action_required)
+    CalDavSyncState.Warning -> stringResource(R.string.sync_state_warning)
 }
