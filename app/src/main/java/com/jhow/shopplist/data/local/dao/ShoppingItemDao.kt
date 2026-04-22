@@ -121,6 +121,17 @@ interface ShoppingItemDao {
     @Query(
         """
         UPDATE items
+        SET isDeleted = 1,
+            updatedAt = :updatedAt,
+            syncStatus = 'SYNCED'
+        WHERE remoteUid IN (:remoteUids) AND isDeleted = 0
+        """
+    )
+    suspend fun softDeleteItemsByRemoteUid(remoteUids: List<String>, updatedAt: Long): Int
+
+    @Query(
+        """
+        UPDATE items
         SET updatedAt = :serverUpdatedAt,
             syncStatus = 'SYNCED',
             remoteUid = :remoteUid,

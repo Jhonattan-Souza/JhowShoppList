@@ -4,6 +4,7 @@ import com.jhow.shopplist.core.dispatchers.IoDispatcher
 import com.jhow.shopplist.core.search.ShoppingSearch
 import com.jhow.shopplist.data.local.dao.ShoppingItemDao
 import com.jhow.shopplist.data.local.entity.ShoppingItemEntity
+import com.jhow.shopplist.domain.model.RemoteShoppingItemSnapshot
 import com.jhow.shopplist.domain.model.ShoppingItem
 import com.jhow.shopplist.domain.model.ShoppingItemSyncResult
 import com.jhow.shopplist.domain.model.SyncStatus
@@ -80,6 +81,48 @@ class ShoppingListRepositoryImpl @Inject constructor(
 
     override suspend fun getPendingSyncItems(): List<ShoppingItem> = withContext(ioDispatcher) {
         shoppingItemDao.getPendingSyncItems().map { it.toDomain() }
+    }
+
+    override suspend fun getAllItems(): List<ShoppingItem> = withContext(ioDispatcher) {
+        shoppingItemDao.getAllItems().map { it.toDomain() }
+    }
+
+    override suspend fun importRemoteItems(items: List<RemoteShoppingItemSnapshot>) {
+        if (items.isEmpty()) return
+        withContext(ioDispatcher) {
+            val now = System.currentTimeMillis()
+            val knownRemoteUids = shoppingItemDao.getAllItems()
+                .mapNotNull { it.remoteUid }
+                .toSet()
+            val newItems = items.filter { it.remoteUid !in knownRemoteUids }
+            if (newItems.isEmpty()) return@withContext
+            shoppingItemDao.insertItems(
+                newItems.map { remote ->
+                    ShoppingItemEntity(
+                        id = UUID.randomUUID().toString(),
+                        name = remote.summary,
+                        isPurchased = remote.isCompleted,
+                        purchaseCount = if (remote.isCompleted) 1 else 0,
+                        createdAt = remote.lastModifiedAt ?: now,
+                        updatedAt = remote.lastModifiedAt ?: now,
+                        isDeleted = false,
+                        syncStatus = SyncStatus.SYNCED,
+                        remoteUid = remote.remoteUid,
+                        remoteHref = remote.href,
+                        remoteEtag = remote.eTag,
+                        remoteLastModifiedAt = remote.lastModifiedAt,
+                        lastSyncedAt = now
+                    )
+                }
+            )
+        }
+    }
+
+    override suspend fun applyRemoteDeletes(remoteUids: Set<String>) {
+        if (remoteUids.isEmpty()) return
+        withContext(ioDispatcher) {
+            shoppingItemDao.softDeleteItemsByRemoteUid(remoteUids.toList(), System.currentTimeMillis())
+        }
     }
 
     override suspend fun markItemsSynced(results: List<ShoppingItemSyncResult>) {

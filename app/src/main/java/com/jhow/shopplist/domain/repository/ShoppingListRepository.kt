@@ -1,5 +1,6 @@
 package com.jhow.shopplist.domain.repository
 
+import com.jhow.shopplist.domain.model.RemoteShoppingItemSnapshot
 import com.jhow.shopplist.domain.model.ShoppingItem
 import com.jhow.shopplist.domain.model.ShoppingItemSyncResult
 import kotlinx.coroutines.flow.Flow
@@ -22,6 +23,12 @@ interface ShoppingListRepository {
     suspend fun softDeleteItem(id: String)
 
     suspend fun getPendingSyncItems(): List<ShoppingItem>
+
+    suspend fun getAllItems(): List<ShoppingItem>
+
+    suspend fun importRemoteItems(items: List<RemoteShoppingItemSnapshot>)
+
+    suspend fun applyRemoteDeletes(remoteUids: Set<String>)
 
     suspend fun markItemsSynced(results: List<ShoppingItemSyncResult>)
 }
