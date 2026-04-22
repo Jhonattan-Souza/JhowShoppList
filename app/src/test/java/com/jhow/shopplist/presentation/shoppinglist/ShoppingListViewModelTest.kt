@@ -3,6 +3,7 @@ package com.jhow.shopplist.presentation.shoppinglist
 import app.cash.turbine.test
 import com.jhow.shopplist.domain.model.CalDavPendingAction
 import com.jhow.shopplist.domain.model.CalDavSyncState
+import com.jhow.shopplist.domain.model.CalDavValidationResult
 import com.jhow.shopplist.domain.model.ShoppingItem
 import com.jhow.shopplist.domain.model.SyncStatus
 import com.jhow.shopplist.domain.usecase.AddOrReclaimShoppingItemUseCase
@@ -17,6 +18,7 @@ import com.jhow.shopplist.domain.usecase.ObservePendingItemsUseCase
 import com.jhow.shopplist.domain.usecase.ObservePurchasedItemsUseCase
 import com.jhow.shopplist.domain.usecase.RequestShoppingSyncUseCase
 import com.jhow.shopplist.domain.usecase.SaveCalDavSyncConfigUseCase
+import com.jhow.shopplist.domain.usecase.ValidateCalDavSyncSettingsUseCase
 import com.jhow.shopplist.testing.FakeCalDavConfigRepository
 import com.jhow.shopplist.testing.FakeShoppingListRepository
 import com.jhow.shopplist.testing.FakeShoppingSyncScheduler
@@ -37,6 +39,8 @@ class ShoppingListViewModelTest {
     private lateinit var repository: FakeShoppingListRepository
     private lateinit var syncScheduler: FakeShoppingSyncScheduler
     private lateinit var configRepository: FakeCalDavConfigRepository
+    private lateinit var validationUseCase: FakeValidateCalDavSyncSettingsUseCase
+    private lateinit var createListUseCase: FakeConfirmCreateCalDavListUseCase
     private lateinit var viewModel: ShoppingListViewModel
 
     @Before
@@ -44,6 +48,8 @@ class ShoppingListViewModelTest {
         repository = FakeShoppingListRepository()
         syncScheduler = FakeShoppingSyncScheduler()
         configRepository = FakeCalDavConfigRepository()
+        validationUseCase = FakeValidateCalDavSyncSettingsUseCase()
+        createListUseCase = FakeConfirmCreateCalDavListUseCase()
         viewModel = ShoppingListViewModel(
             observePendingItemsUseCase = ObservePendingItemsUseCase(repository),
             observePurchasedItemsUseCase = ObservePurchasedItemsUseCase(repository),
@@ -54,8 +60,9 @@ class ShoppingListViewModelTest {
             markPurchasedItemPendingUseCase = MarkPurchasedItemPendingUseCase(repository),
             requestShoppingSyncUseCase = RequestShoppingSyncUseCase(syncScheduler),
             getCalDavSyncConfigUseCase = GetCalDavSyncConfigUseCase(configRepository),
+            validateCalDavSyncSettingsUseCase = validationUseCase,
             saveCalDavSyncConfigUseCase = SaveCalDavSyncConfigUseCase(configRepository),
-            confirmCreateCalDavListUseCase = ConfirmCreateCalDavListUseCase(configRepository),
+            confirmCreateCalDavListUseCase = createListUseCase,
             clearCalDavPendingActionUseCase = ClearCalDavPendingActionUseCase(configRepository)
         )
     }
@@ -313,6 +320,7 @@ class ShoppingListViewModelTest {
             listName = "Groceries",
             syncState = CalDavSyncState.Idle
         )
+        validationUseCase.nextResult = CalDavValidationResult.Success("/lists/groceries/")
         advanceUntilIdle()
 
         viewModel.onSyncMenuClicked()
@@ -322,15 +330,12 @@ class ShoppingListViewModelTest {
         assertEquals(true, viewModel.uiState.value.isSyncSettingsVisible)
         assertEquals("https://dav.example.com", viewModel.uiState.value.syncSettings.serverUrl)
 
-        viewModel.onSyncSettingsSaved(
-            ShoppingListSyncSettingsUiState(
-                enabled = true,
-                serverUrl = "https://dav.example.com",
-                username = "jhow",
-                listName = "Groceries",
-                password = "secret"
-            )
-        )
+        viewModel.onSyncEnabledChanged(true)
+        viewModel.onSyncServerUrlChanged("https://dav.example.com")
+        viewModel.onSyncUsernameChanged("jhow")
+        viewModel.onSyncListNameChanged("Groceries")
+        viewModel.onSyncPasswordChanged("secret")
+        viewModel.onSyncSettingsSaved()
         advanceUntilIdle()
 
         assertEquals("Groceries", configRepository.currentConfig.listName)
@@ -339,20 +344,119 @@ class ShoppingListViewModelTest {
 
     @Test
     fun `confirming create missing list clears pending action and requests sync`() = runTest {
-        configRepository.seed(
-            enabled = true,
-            serverUrl = "https://dav.example.com",
-            username = "jhow",
-            listName = "Groceries",
-            syncState = CalDavSyncState.UserActionRequired,
-            pendingAction = CalDavPendingAction.CreateMissingList
-        )
+        createListUseCase.nextResult = CalDavValidationResult.Success("/lists/groceries/")
+        viewModel.onSyncSettingsRequested()
+        viewModel.onSyncEnabledChanged(true)
+        viewModel.onSyncServerUrlChanged("https://dav.example.com")
+        viewModel.onSyncUsernameChanged("jhow")
+        viewModel.onSyncListNameChanged("Groceries")
+        viewModel.onSyncPasswordChanged("secret")
         advanceUntilIdle()
 
         viewModel.onConfirmCreateMissingList()
         advanceUntilIdle()
 
         assertEquals(CalDavPendingAction.None, configRepository.currentConfig.pendingAction)
+        assertEquals(1, syncScheduler.requestCount)
+    }
+
+    @Test
+    fun `save keeps sheet open and shows inline error on validation failure`() = runTest {
+        validationUseCase.nextResult = CalDavValidationResult.ConfigurationError("Password is required")
+        viewModel.onSyncSettingsRequested()
+        advanceUntilIdle()
+
+        viewModel.onSyncSettingsSaved()
+        advanceUntilIdle()
+
+        assertEquals(true, viewModel.uiState.value.isSyncSettingsVisible)
+        assertEquals("Password is required", viewModel.uiState.value.syncSettings.statusMessage)
+        assertEquals(0, syncScheduler.requestCount)
+    }
+
+    @Test
+    fun `save closes sheet only after successful validation and persistence`() = runTest {
+        validationUseCase.nextResult = CalDavValidationResult.Success("/lists/groceries/")
+        viewModel.onSyncSettingsRequested()
+        viewModel.onSyncEnabledChanged(true)
+        viewModel.onSyncServerUrlChanged("https://dav.example.com")
+        viewModel.onSyncUsernameChanged("jhow")
+        viewModel.onSyncPasswordChanged("secret")
+        viewModel.onSyncListNameChanged("Groceries")
+        advanceUntilIdle()
+
+        viewModel.onSyncSettingsSaved()
+        advanceUntilIdle()
+
+        assertEquals(false, viewModel.uiState.value.isSyncSettingsVisible)
+        assertEquals("Groceries", configRepository.currentConfig.listName)
+        assertEquals(1, syncScheduler.requestCount)
+    }
+
+    @Test
+    fun `missing list keeps sheet open and shows create-list action immediately`() = runTest {
+        validationUseCase.nextResult = CalDavValidationResult.MissingList("Groceries")
+        viewModel.onSyncSettingsRequested()
+        advanceUntilIdle()
+
+        viewModel.onSyncSettingsSaved()
+        advanceUntilIdle()
+
+        assertEquals(true, viewModel.uiState.value.isSyncSettingsVisible)
+        assertEquals(
+            CalDavPendingAction.CreateMissingList,
+            viewModel.uiState.value.syncSettings.pendingAction
+        )
+    }
+
+    @Test
+    fun `dismissing sync settings clears typed password from form`() = runTest {
+        viewModel.onSyncSettingsRequested()
+        viewModel.onSyncPasswordChanged("secret")
+        advanceUntilIdle()
+
+        viewModel.onSyncSettingsDismissed()
+        advanceUntilIdle()
+
+        assertEquals(false, viewModel.uiState.value.isSyncSettingsVisible)
+        assertEquals("", viewModel.uiState.value.syncSettings.password)
+    }
+
+    @Test
+    fun `create missing list coerces blank resolved url to null`() = runTest {
+        createListUseCase.nextResult = CalDavValidationResult.Success("")
+        viewModel.onSyncSettingsRequested()
+        viewModel.onSyncEnabledChanged(true)
+        viewModel.onSyncServerUrlChanged("https://dav.example.com")
+        viewModel.onSyncUsernameChanged("jhow")
+        viewModel.onSyncListNameChanged("Groceries")
+        viewModel.onSyncPasswordChanged("secret")
+        advanceUntilIdle()
+
+        viewModel.onConfirmCreateMissingList()
+        advanceUntilIdle()
+
+        assertEquals(null, configRepository.currentConfig.lastResolvedCollectionUrl)
+    }
+
+    @Test
+    fun `create missing list closes sheet only after foreground success`() = runTest {
+        validationUseCase.nextResult = CalDavValidationResult.MissingList("Groceries")
+        createListUseCase.nextResult = CalDavValidationResult.Success("/lists/groceries/")
+        viewModel.onSyncSettingsRequested()
+        viewModel.onSyncEnabledChanged(true)
+        viewModel.onSyncServerUrlChanged("https://dav.example.com")
+        viewModel.onSyncUsernameChanged("jhow")
+        viewModel.onSyncPasswordChanged("secret")
+        viewModel.onSyncListNameChanged("Groceries")
+        advanceUntilIdle()
+
+        viewModel.onSyncSettingsSaved()
+        advanceUntilIdle()
+        viewModel.onConfirmCreateMissingList()
+        advanceUntilIdle()
+
+        assertEquals(false, viewModel.uiState.value.isSyncSettingsVisible)
         assertEquals(1, syncScheduler.requestCount)
     }
 
@@ -456,4 +560,71 @@ class ShoppingListViewModelTest {
         isDeleted = false,
         syncStatus = SyncStatus.SYNCED
     )
+
+    private class FakeValidateCalDavSyncSettingsUseCase : ValidateCalDavSyncSettingsUseCase(
+        configRepository = FakeCalDavConfigRepository(),
+        listLocator = com.jhow.shopplist.data.sync.CalDavListLocator(
+            object : com.jhow.shopplist.data.sync.CalDavDiscoveryService {
+                override suspend fun findTaskCollections(
+                    serverUrl: String,
+                    username: String,
+                    password: String
+                ) = emptyList<com.jhow.shopplist.data.sync.CalDavCollectionCandidate>()
+
+                override suspend fun createTaskCollection(
+                    serverUrl: String,
+                    username: String,
+                    password: String,
+                    listName: String
+                ): String = error("Not used")
+            }
+        )
+    ) {
+        var nextResult: CalDavValidationResult = CalDavValidationResult.Success()
+        var callCount: Int = 0
+            private set
+
+        override suspend operator fun invoke(
+            enabled: Boolean,
+            serverUrl: String,
+            username: String,
+            listName: String,
+            password: String
+        ): CalDavValidationResult {
+            callCount++
+            return nextResult
+        }
+    }
+
+    private class FakeConfirmCreateCalDavListUseCase : ConfirmCreateCalDavListUseCase(
+        repository = FakeCalDavConfigRepository(),
+        discoveryService = object : com.jhow.shopplist.data.sync.CalDavDiscoveryService {
+            override suspend fun findTaskCollections(
+                serverUrl: String,
+                username: String,
+                password: String
+            ) = emptyList<com.jhow.shopplist.data.sync.CalDavCollectionCandidate>()
+
+            override suspend fun createTaskCollection(
+                serverUrl: String,
+                username: String,
+                password: String,
+                listName: String
+            ): String = error("Not used")
+        }
+    ) {
+        var nextResult: CalDavValidationResult = CalDavValidationResult.Success()
+        var callCount: Int = 0
+            private set
+
+        override suspend operator fun invoke(
+            serverUrl: String,
+            username: String,
+            listName: String,
+            password: String
+        ): CalDavValidationResult {
+            callCount++
+            return nextResult
+        }
+    }
 }

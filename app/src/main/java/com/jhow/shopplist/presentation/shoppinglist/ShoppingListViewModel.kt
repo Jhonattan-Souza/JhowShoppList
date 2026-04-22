@@ -15,6 +15,9 @@ import com.jhow.shopplist.domain.usecase.ObservePendingItemsUseCase
 import com.jhow.shopplist.domain.usecase.ObservePurchasedItemsUseCase
 import com.jhow.shopplist.domain.usecase.RequestShoppingSyncUseCase
 import com.jhow.shopplist.domain.usecase.SaveCalDavSyncConfigUseCase
+import com.jhow.shopplist.domain.usecase.ValidateCalDavSyncSettingsUseCase
+import com.jhow.shopplist.domain.model.CalDavPendingAction
+import com.jhow.shopplist.domain.model.CalDavValidationResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +39,7 @@ class ShoppingListViewModel @Inject constructor(
     private val markPurchasedItemPendingUseCase: MarkPurchasedItemPendingUseCase,
     private val requestShoppingSyncUseCase: RequestShoppingSyncUseCase,
     private val getCalDavSyncConfigUseCase: GetCalDavSyncConfigUseCase,
+    private val validateCalDavSyncSettingsUseCase: ValidateCalDavSyncSettingsUseCase,
     private val saveCalDavSyncConfigUseCase: SaveCalDavSyncConfigUseCase,
     private val confirmCreateCalDavListUseCase: ConfirmCreateCalDavListUseCase,
     private val clearCalDavPendingActionUseCase: ClearCalDavPendingActionUseCase
@@ -98,8 +102,6 @@ class ShoppingListViewModel @Inject constructor(
         } else {
             form.copy(
                 syncState = config.syncState,
-                statusMessage = config.statusMessage,
-                pendingAction = config.pendingAction,
                 hasStoredPassword = if (form.password.isBlank()) config.hasStoredPassword else false
             )
         }
@@ -224,20 +226,85 @@ class ShoppingListViewModel @Inject constructor(
     }
 
     fun onSyncSettingsDismissed() {
+        syncSettingsForm.update { it.copy(password = "") }
         syncSettingsVisible.value = false
     }
 
-    fun onSyncSettingsSaved(settings: ShoppingListSyncSettingsUiState) {
+    fun onSyncSettingsSaved() {
         viewModelScope.launch {
-            saveCalDavSyncConfigUseCase(
-                enabled = settings.enabled,
-                serverUrl = settings.serverUrl,
-                username = settings.username,
-                listName = settings.listName,
-                password = settings.password
-            )
-            syncSettingsVisible.value = false
-            requestShoppingSyncUseCase()
+            syncSettingsForm.update {
+                it.copy(
+                    isSaving = true,
+                    statusMessage = null,
+                    pendingAction = CalDavPendingAction.None
+                )
+            }
+            val current = syncSettingsForm.value
+            when (
+                val result = validateCalDavSyncSettingsUseCase(
+                    enabled = current.enabled,
+                    serverUrl = current.serverUrl,
+                    username = current.username,
+                    listName = current.listName,
+                    password = current.password
+                )
+            ) {
+                is CalDavValidationResult.Success -> {
+                    saveCalDavSyncConfigUseCase(
+                        enabled = current.enabled,
+                        serverUrl = current.serverUrl,
+                        username = current.username,
+                        listName = current.listName,
+                        password = current.password,
+                        resolvedCollectionUrl = result.resolvedCollectionUrl.ifBlank { null }
+                    )
+                    syncSettingsForm.value = current.copy(
+                        password = "",
+                        hasStoredPassword = current.password.isNotBlank() || current.hasStoredPassword,
+                        isSaving = false,
+                        statusMessage = null,
+                        pendingAction = CalDavPendingAction.None
+                    )
+                    syncSettingsVisible.value = false
+                    requestShoppingSyncUseCase()
+                }
+                is CalDavValidationResult.MissingList -> {
+                    syncSettingsForm.update {
+                        it.copy(
+                            isSaving = false,
+                            statusMessage = "Remote list ${result.listName} does not exist yet",
+                            pendingAction = CalDavPendingAction.CreateMissingList
+                        )
+                    }
+                }
+                is CalDavValidationResult.AuthError -> {
+                    syncSettingsForm.update {
+                        it.copy(
+                            isSaving = false,
+                            statusMessage = result.message,
+                            pendingAction = CalDavPendingAction.None
+                        )
+                    }
+                }
+                is CalDavValidationResult.NetworkError -> {
+                    syncSettingsForm.update {
+                        it.copy(
+                            isSaving = false,
+                            statusMessage = result.message,
+                            pendingAction = CalDavPendingAction.None
+                        )
+                    }
+                }
+                is CalDavValidationResult.ConfigurationError -> {
+                    syncSettingsForm.update {
+                        it.copy(
+                            isSaving = false,
+                            statusMessage = result.message,
+                            pendingAction = CalDavPendingAction.None
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -250,8 +317,78 @@ class ShoppingListViewModel @Inject constructor(
 
     fun onConfirmCreateMissingList() {
         viewModelScope.launch {
-            confirmCreateCalDavListUseCase()
-            requestShoppingSyncUseCase()
+            val current = syncSettingsForm.value
+            syncSettingsForm.update {
+                it.copy(
+                    isSaving = true,
+                    statusMessage = null,
+                    pendingAction = CalDavPendingAction.None
+                )
+            }
+            when (
+                val result = confirmCreateCalDavListUseCase(
+                    serverUrl = current.serverUrl,
+                    username = current.username,
+                    listName = current.listName,
+                    password = current.password
+                )
+            ) {
+                is CalDavValidationResult.Success -> {
+                    saveCalDavSyncConfigUseCase(
+                        enabled = current.enabled,
+                        serverUrl = current.serverUrl,
+                        username = current.username,
+                        listName = current.listName,
+                        password = current.password,
+                        resolvedCollectionUrl = result.resolvedCollectionUrl.ifBlank { null }
+                    )
+                    syncSettingsForm.value = current.copy(
+                        password = "",
+                        hasStoredPassword = current.password.isNotBlank() || current.hasStoredPassword,
+                        isSaving = false,
+                        statusMessage = null,
+                        pendingAction = CalDavPendingAction.None
+                    )
+                    syncSettingsVisible.value = false
+                    requestShoppingSyncUseCase()
+                }
+                is CalDavValidationResult.MissingList -> {
+                    syncSettingsForm.update {
+                        it.copy(
+                            isSaving = false,
+                            statusMessage = "Remote list ${result.listName} does not exist yet",
+                            pendingAction = CalDavPendingAction.CreateMissingList
+                        )
+                    }
+                }
+                is CalDavValidationResult.AuthError -> {
+                    syncSettingsForm.update {
+                        it.copy(
+                            isSaving = false,
+                            statusMessage = result.message,
+                            pendingAction = CalDavPendingAction.None
+                        )
+                    }
+                }
+                is CalDavValidationResult.NetworkError -> {
+                    syncSettingsForm.update {
+                        it.copy(
+                            isSaving = false,
+                            statusMessage = result.message,
+                            pendingAction = CalDavPendingAction.None
+                        )
+                    }
+                }
+                is CalDavValidationResult.ConfigurationError -> {
+                    syncSettingsForm.update {
+                        it.copy(
+                            isSaving = false,
+                            statusMessage = result.message,
+                            pendingAction = CalDavPendingAction.None
+                        )
+                    }
+                }
+            }
         }
     }
 

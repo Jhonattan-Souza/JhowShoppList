@@ -9,6 +9,10 @@ sealed interface CalDavValidationResult {
         val listName: String
     ) : CalDavValidationResult
 
+    data class AuthError(
+        val message: String
+    ) : CalDavValidationResult
+
     data class ConfigurationError(
         val message: String
     ) : CalDavValidationResult
