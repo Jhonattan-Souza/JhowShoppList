@@ -9,6 +9,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.jhow.shopplist.MainActivity
@@ -18,6 +20,7 @@ import com.jhow.shopplist.di.DatabaseEntryPoint
 import com.jhow.shopplist.domain.model.SyncStatus
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.runBlocking
+import kotlin.math.abs
 import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -272,8 +275,15 @@ class ShoppingListScreenTest {
     }
 
     @Test
-    fun deletingPendingItemRemovesItFromVisibleLists() {
-        composeRule.onNodeWithTag(ShoppingListTestTags.deletePendingItem("pending-apples")).performClick()
+    fun swipingPendingItemAndConfirmingRemovesItFromVisibleLists() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.swipePendingItem("pending-apples")).performTouchInput {
+            swipeLeft()
+        }
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.DELETE_ITEM_DIALOG).fetchSemanticsNodes().isNotEmpty()
+        }
+
         composeRule.onNodeWithText("Delete").performClick()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
@@ -286,8 +296,15 @@ class ShoppingListScreenTest {
     }
 
     @Test
-    fun deletingPurchasedItemRemovesItFromHistory() {
-        composeRule.onNodeWithTag(ShoppingListTestTags.deletePurchasedItem("purchased-coffee")).performClick()
+    fun swipingPurchasedItemAndConfirmingRemovesItFromHistory() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.swipePurchasedItem("purchased-coffee")).performTouchInput {
+            swipeLeft()
+        }
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.DELETE_ITEM_DIALOG).fetchSemanticsNodes().isNotEmpty()
+        }
+
         composeRule.onNodeWithText("Delete").performClick()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
@@ -297,6 +314,37 @@ class ShoppingListScreenTest {
         assertTrue(
             composeRule.onAllNodesWithTag(ShoppingListTestTags.purchasedItem("purchased-coffee")).fetchSemanticsNodes().isEmpty()
         )
+    }
+
+    @Test
+    fun swipingPendingItemAndCancellingKeepsItVisible() {
+        val initialLeft = composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-bread"))
+            .fetchSemanticsNode().boundsInRoot.left
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.swipePendingItem("pending-bread")).performTouchInput {
+            swipeLeft()
+        }
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.DELETE_ITEM_DIALOG).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.onNodeWithText("Cancel").performClick()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.DELETE_ITEM_DIALOG).fetchSemanticsNodes().isEmpty()
+        }
+
+        composeRule.waitForIdle()
+
+        val restoredLeft = composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-bread"))
+            .fetchSemanticsNode().boundsInRoot.left
+        val tolerance = with(composeRule.density) { 1.dp.toPx() }
+
+        assertTrue(
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("pending-bread")).fetchSemanticsNodes().isNotEmpty()
+        )
+        assertTrue(abs(restoredLeft - initialLeft) <= tolerance)
     }
 
     private fun sampleItems(): List<ShoppingItemEntity> = listOf(

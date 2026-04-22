@@ -30,7 +30,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AddTask
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Restore
@@ -39,14 +38,16 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -305,6 +306,8 @@ private fun ShoppingItemsContent(
     onDeleteItemRequested: (ShoppingItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val swipeResetTrigger = uiState.itemPendingDeletion?.id.orEmpty()
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 100.dp),
@@ -333,7 +336,8 @@ private fun ShoppingItemsContent(
                     item = item,
                     isSelected = item.id in uiState.selectedIds,
                     onClick = { onPendingItemClick(item.id) },
-                    onDeleteClick = { onDeleteItemRequested(item) }
+                    onDeleteRequested = { onDeleteItemRequested(item) },
+                    swipeResetTrigger = swipeResetTrigger
                 )
             }
         }
@@ -363,7 +367,8 @@ private fun ShoppingItemsContent(
                 PurchasedItemRow(
                     item = item,
                     onClick = { onPurchasedItemClick(item.id) },
-                    onDeleteClick = { onDeleteItemRequested(item) }
+                    onDeleteRequested = { onDeleteItemRequested(item) },
+                    swipeResetTrigger = swipeResetTrigger
                 )
             }
         }
@@ -434,7 +439,8 @@ private fun PendingItemRow(
     item: ShoppingItem,
     isSelected: Boolean,
     onClick: () -> Unit,
-    onDeleteClick: () -> Unit,
+    onDeleteRequested: () -> Unit,
+    swipeResetTrigger: String,
     modifier: Modifier = Modifier
 ) {
     val containerColor = if (isSelected) {
@@ -447,10 +453,10 @@ private fun PendingItemRow(
         name = item.name,
         leadingIcon = if (isSelected) Icons.Rounded.Check else Icons.Rounded.RadioButtonUnchecked,
         containerColor = containerColor,
-        deleteTag = ShoppingListTestTags.deletePendingItem(item.id),
-        deleteContentDescription = stringResource(R.string.delete_item_content_description, item.name),
         onClick = onClick,
-        onDeleteClick = onDeleteClick,
+        onDeleteRequested = onDeleteRequested,
+        swipeTag = ShoppingListTestTags.swipePendingItem(item.id),
+        swipeResetTrigger = swipeResetTrigger,
         modifier = modifier
             .fillMaxWidth()
             .semantics { contentDescription = item.name }
@@ -462,19 +468,20 @@ private fun PendingItemRow(
 private fun PurchasedItemRow(
     item: ShoppingItem,
     onClick: () -> Unit,
-    onDeleteClick: () -> Unit,
+    onDeleteRequested: () -> Unit,
+    swipeResetTrigger: String,
     modifier: Modifier = Modifier
 ) {
     ShoppingItemRow(
         name = item.name,
         leadingIcon = Icons.Rounded.History,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        deleteTag = ShoppingListTestTags.deletePurchasedItem(item.id),
-        deleteContentDescription = stringResource(R.string.delete_item_content_description, item.name),
         textDecoration = TextDecoration.LineThrough,
         rowAlpha = 0.6f,
         onClick = onClick,
-        onDeleteClick = onDeleteClick,
+        onDeleteRequested = onDeleteRequested,
+        swipeTag = ShoppingListTestTags.swipePurchasedItem(item.id),
+        swipeResetTrigger = swipeResetTrigger,
         modifier = modifier
             .fillMaxWidth()
             .semantics { contentDescription = item.name }
@@ -487,48 +494,97 @@ private fun ShoppingItemRow(
     name: String,
     leadingIcon: androidx.compose.ui.graphics.vector.ImageVector,
     containerColor: androidx.compose.ui.graphics.Color,
-    deleteTag: String,
-    deleteContentDescription: String,
     onClick: () -> Unit,
-    onDeleteClick: () -> Unit,
+    onDeleteRequested: () -> Unit,
+    swipeTag: String,
+    swipeResetTrigger: String,
     modifier: Modifier = Modifier,
     textDecoration: TextDecoration? = null,
     rowAlpha: Float = 1f
 ) {
-    Row(
-        modifier = modifier
-            .alpha(rowAlpha)
-            .clip(RoundedCornerShape(18.dp))
-            .background(containerColor)
-            .heightIn(min = 56.dp)
-            .padding(start = 16.dp, end = 4.dp)
-            .clickable(onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically
+    val dismissState = rememberSwipeToDismissBoxState()
+
+    LaunchedEffect(dismissState.currentValue) {
+        if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
+            onDeleteRequested()
+            dismissState.reset()
+        }
+    }
+
+    LaunchedEffect(swipeResetTrigger) {
+        if (
+            dismissState.currentValue != SwipeToDismissBoxValue.Settled ||
+                dismissState.targetValue != SwipeToDismissBoxValue.Settled
+        ) {
+            dismissState.reset()
+        }
+    }
+
+    SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = false,
+        backgroundContent = {
+            SwipeDeleteBackground(
+                label = stringResource(R.string.delete_item_swipe_label),
+                isActive = dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart
+            )
+        },
+        modifier = Modifier.testTag(swipeTag)
     ) {
-        Icon(
-            imageVector = leadingIcon,
-            contentDescription = null,
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = name,
-            style = MaterialTheme.typography.bodyLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textDecoration = textDecoration,
-            modifier = Modifier
-                .weight(1f)
-                .padding(vertical = 12.dp)
-        )
-        IconButton(
-            onClick = onDeleteClick,
-            modifier = Modifier.testTag(deleteTag)
+        Row(
+            modifier = modifier
+                .alpha(rowAlpha)
+                .clip(RoundedCornerShape(18.dp))
+                .background(containerColor)
+                .heightIn(min = 56.dp)
+                .padding(horizontal = 16.dp)
+                .clickable(onClick = onClick),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Rounded.DeleteOutline,
-                contentDescription = deleteContentDescription
+                imageVector = leadingIcon,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = name,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textDecoration = textDecoration,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(vertical = 12.dp)
             )
         }
+    }
+}
+
+@Composable
+private fun SwipeDeleteBackground(
+    label: String,
+    isActive: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(
+                if (isActive) MaterialTheme.colorScheme.errorContainer
+                else MaterialTheme.colorScheme.surfaceContainerHighest
+            )
+            .heightIn(min = 56.dp)
+            .padding(horizontal = 20.dp),
+        contentAlignment = Alignment.CenterEnd
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = if (isActive) MaterialTheme.colorScheme.onErrorContainer
+            else MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
