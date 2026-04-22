@@ -52,10 +52,10 @@ class DataStoreCalDavConfigRepository(
         serverUrl: String,
         username: String,
         listName: String,
-        password: String
+        newPassword: String?
     ) {
-        if (password.isNotBlank()) {
-            passwordStorage.save(password)
+        if (newPassword != null) {
+            passwordStorage.save(newPassword)
         }
         dataStore.updateData { prefs ->
             prefs.toMutablePreferences().apply {

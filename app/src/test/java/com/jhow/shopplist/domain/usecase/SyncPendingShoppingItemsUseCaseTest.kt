@@ -60,7 +60,7 @@ class SyncPendingShoppingItemsUseCaseTest {
             serverUrl = "https://dav.example.com",
             username = "jhow",
             listName = "Groceries",
-            password = "secret"
+            newPassword = "secret"
         )
         gateway.nextOutcome = CalDavSyncOutcome.UserActionRequired(
             message = "Create remote list Groceries",
