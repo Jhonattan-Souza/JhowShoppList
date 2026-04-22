@@ -1,6 +1,7 @@
 package com.jhow.shopplist.domain.usecase
 
 import com.jhow.shopplist.data.sync.CalDavCollectionCandidate
+import com.jhow.shopplist.data.sync.CalDavAuthenticationException
 import com.jhow.shopplist.data.sync.CalDavDiscoveryService
 import com.jhow.shopplist.data.sync.CalDavListLocator
 import com.jhow.shopplist.domain.model.CalDavValidationResult
@@ -168,6 +169,32 @@ class ValidateCalDavSyncSettingsUseCaseTest {
 
         assertEquals(
             CalDavValidationResult.NetworkError("Unable to validate sync settings"),
+            result
+        )
+    }
+
+    @Test
+    fun `authentication failure maps to auth error`() = runTest {
+        val configRepository = FakeCalDavConfigRepository().apply {
+            setStoredPasswordAvailable()
+        }
+        val useCase = ValidateCalDavSyncSettingsUseCase(
+            configRepository = configRepository,
+            listLocator = CalDavListLocator(
+                FakeDiscoveryService(throwOnFind = CalDavAuthenticationException())
+            )
+        )
+
+        val result = useCase(
+            enabled = true,
+            serverUrl = "https://dav.example.com",
+            username = "jhow",
+            listName = "Groceries",
+            password = ""
+        )
+
+        assertEquals(
+            CalDavValidationResult.AuthError("Authentication failed"),
             result
         )
     }

@@ -10,7 +10,7 @@ import com.jhow.shopplist.data.sync.AndroidKeystorePasswordStorage
 import com.jhow.shopplist.data.sync.CalDavDiscoveryService
 import com.jhow.shopplist.data.sync.CalDavShoppingSyncGateway
 import com.jhow.shopplist.data.sync.DataStoreCalDavConfigRepository
-import com.jhow.shopplist.data.sync.NoOpCalDavDiscoveryService
+import com.jhow.shopplist.data.sync.Dav4jvmCalDavDiscoveryService
 import com.jhow.shopplist.data.sync.WorkManagerShoppingSyncScheduler
 import com.jhow.shopplist.domain.repository.ShoppingListRepository
 import com.jhow.shopplist.core.dispatchers.IoDispatcher
@@ -64,7 +64,7 @@ abstract class AppBindModule {
     @Binds
     @Singleton
     abstract fun bindCalDavDiscoveryService(
-        impl: NoOpCalDavDiscoveryService
+        impl: Dav4jvmCalDavDiscoveryService
     ): CalDavDiscoveryService
 }
 

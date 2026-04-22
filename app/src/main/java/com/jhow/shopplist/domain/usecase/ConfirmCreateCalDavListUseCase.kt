@@ -1,6 +1,7 @@
 package com.jhow.shopplist.domain.usecase
 
 import com.jhow.shopplist.data.sync.CalDavDiscoveryService
+import com.jhow.shopplist.data.sync.CalDavAuthenticationException
 import com.jhow.shopplist.domain.model.CalDavValidationResult
 import com.jhow.shopplist.domain.sync.CalDavConfigRepository
 import java.util.concurrent.CancellationException
@@ -37,6 +38,8 @@ open class ConfirmCreateCalDavListUseCase @Inject constructor(
             CalDavValidationResult.Success(href)
         } catch (exception: CancellationException) {
             throw exception
+        } catch (_: CalDavAuthenticationException) {
+            CalDavValidationResult.AuthError(message = "Authentication failed")
         } catch (_: Exception) {
             CalDavValidationResult.NetworkError(message = "Unable to create remote list")
         }
