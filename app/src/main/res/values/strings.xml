@@ -13,4 +13,25 @@
     <string name="delete_item_swipe_label">Delete item</string>
     <string name="delete_item_confirm">Delete</string>
     <string name="delete_item_cancel">Cancel</string>
+    <string name="sync_menu_open">Open sync menu</string>
+    <string name="sync_now">Sync now</string>
+    <string name="sync_settings">Sync settings</string>
+    <string name="sync_server_label">Server</string>
+    <string name="sync_username_label">Username</string>
+    <string name="sync_password_label">Password</string>
+    <string name="sync_list_name_label">List name</string>
+    <string name="sync_save">Save</string>
+    <string name="sync_create_missing_list">Create remote list</string>
+    <string name="sync_enabled_label">Enable CalDAV sync</string>
+    <string name="sync_state_label">Status: %1$s</string>
+    <string name="sync_state_disabled">Disabled</string>
+    <string name="sync_state_idle">Idle</string>
+    <string name="sync_state_syncing">Syncing</string>
+    <string name="sync_state_success">Success</string>
+    <string name="sync_state_auth_error">Authentication error</string>
+    <string name="sync_state_network_error">Network error</string>
+    <string name="sync_state_missing_list">Missing list</string>
+    <string name="sync_state_ambiguous_list_name">Ambiguous list name</string>
+    <string name="sync_state_user_action_required">User action required</string>
+    <string name="sync_state_warning">Warning</string>
 </resources>

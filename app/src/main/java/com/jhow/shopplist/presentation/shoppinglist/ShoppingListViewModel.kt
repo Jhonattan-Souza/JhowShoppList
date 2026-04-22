@@ -177,15 +177,15 @@ class ShoppingListViewModel @Inject constructor(
         syncSettingsVisible.value = false
     }
 
-    fun onSyncSettingsSaved(
-        enabled: Boolean,
-        serverUrl: String,
-        username: String,
-        password: String,
-        listName: String
-    ) {
+    fun onSyncSettingsSaved(settings: ShoppingListSyncSettingsUiState) {
         viewModelScope.launch {
-            saveCalDavSyncConfigUseCase(enabled, serverUrl, username, listName, password)
+            saveCalDavSyncConfigUseCase(
+                enabled = settings.enabled,
+                serverUrl = settings.serverUrl,
+                username = settings.username,
+                listName = settings.listName,
+                password = settings.password
+            )
             syncSettingsVisible.value = false
             requestShoppingSyncUseCase()
         }
