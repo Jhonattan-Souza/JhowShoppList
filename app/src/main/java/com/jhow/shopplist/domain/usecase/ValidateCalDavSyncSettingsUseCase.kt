@@ -1,6 +1,7 @@
 package com.jhow.shopplist.domain.usecase
 
 import com.jhow.shopplist.data.sync.CalDavListLocator
+import com.jhow.shopplist.data.sync.CalDavAuthenticationException
 import com.jhow.shopplist.domain.model.CalDavValidationResult
 import com.jhow.shopplist.domain.sync.CalDavConfigRepository
 import java.util.concurrent.CancellationException
@@ -55,6 +56,8 @@ open class ValidateCalDavSyncSettingsUseCase @Inject constructor(
             }
         } catch (exception: CancellationException) {
             throw exception
+        } catch (_: CalDavAuthenticationException) {
+            CalDavValidationResult.AuthError(message = "Authentication failed")
         } catch (_: Exception) {
             CalDavValidationResult.NetworkError(message = "Unable to validate sync settings")
         }
