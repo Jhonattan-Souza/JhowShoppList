@@ -24,6 +24,7 @@ object ShoppingListTestTags {
     const val SYNC_ENABLED_SWITCH = "sync_enabled_switch"
     const val SYNC_STATE_TEXT = "sync_state_text"
     const val SYNC_SETTINGS_SHEET_CONTENT = "sync_settings_sheet_content"
+    const val SYNC_PROGRESS_INDICATOR = "sync_progress_indicator"
 
     fun pendingItem(id: String): String = "pending_item_$id"
 

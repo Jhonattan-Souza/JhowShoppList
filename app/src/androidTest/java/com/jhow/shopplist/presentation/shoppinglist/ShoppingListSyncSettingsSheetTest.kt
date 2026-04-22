@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
@@ -50,7 +51,7 @@ class ShoppingListSyncSettingsSheetTest {
                 onSyncMenuDismissed = {},
                 onSyncSettingsRequested = {},
                 onSyncSettingsDismissed = {},
-                onSyncSettingsSaved = { _ -> },
+                onSyncSettingsSaved = {},
                 onSyncNowRequested = {},
                 onConfirmCreateMissingList = {}
             )
@@ -88,7 +89,7 @@ class ShoppingListSyncSettingsSheetTest {
                 onSyncMenuDismissed = {},
                 onSyncSettingsRequested = {},
                 onSyncSettingsDismissed = {},
-                onSyncSettingsSaved = { _ -> },
+                onSyncSettingsSaved = {},
                 onSyncNowRequested = {},
                 onConfirmCreateMissingList = {}
             )
@@ -124,7 +125,7 @@ class ShoppingListSyncSettingsSheetTest {
                 onSyncMenuDismissed = {},
                 onSyncSettingsRequested = {},
                 onSyncSettingsDismissed = {},
-                onSyncSettingsSaved = { _ -> },
+                onSyncSettingsSaved = {},
                 onSyncNowRequested = {},
                 onConfirmCreateMissingList = {}
             )
@@ -175,9 +176,14 @@ class ShoppingListSyncSettingsSheetTest {
                 onSyncMenuDismissed = {},
                 onSyncSettingsRequested = {},
                 onSyncSettingsDismissed = {},
-                onSyncSettingsSaved = { _ -> },
+                onSyncSettingsSaved = {},
                 onSyncNowRequested = {},
-                onConfirmCreateMissingList = {}
+                onConfirmCreateMissingList = {},
+                onSyncServerUrlChanged = { url ->
+                    uiState = uiState.copy(
+                        syncSettings = uiState.syncSettings.copy(serverUrl = url)
+                    )
+                }
             )
         }
 
@@ -185,6 +191,7 @@ class ShoppingListSyncSettingsSheetTest {
             .performTextClearance()
         composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_SERVER_FIELD)
             .performTextInput("modified")
+        composeRule.waitForIdle()
 
         uiState = uiState.copy(
             syncSettings = uiState.syncSettings.copy(
@@ -229,7 +236,7 @@ class ShoppingListSyncSettingsSheetTest {
                 onSyncMenuDismissed = {},
                 onSyncSettingsRequested = {},
                 onSyncSettingsDismissed = {},
-                onSyncSettingsSaved = { _ -> },
+                onSyncSettingsSaved = {},
                 onSyncNowRequested = {},
                 onConfirmCreateMissingList = {}
             )
@@ -241,6 +248,87 @@ class ShoppingListSyncSettingsSheetTest {
         assertTrue(
             composeRule.onAllNodesWithText("Connection timed out").fetchSemanticsNodes().isNotEmpty()
         )
+    }
+
+    @Test
+    fun syncSettingsSheetShowsStoredPasswordPlaceholderWithoutRawPassword() {
+        composeRule.setContent {
+            ShoppingListScreen(
+                uiState = ShoppingListUiState(
+                    isSyncSettingsVisible = true,
+                    syncSettings = ShoppingListSyncSettingsUiState(hasStoredPassword = true)
+                ),
+                onInputValueChange = {},
+                onAddItem = {},
+                onSuggestionSelected = {},
+                onPendingItemClick = {},
+                onPurchasedItemClick = {},
+                onPurchaseSelectedItems = {},
+                onDeleteItemRequested = {},
+                onDeleteItemDismissed = {},
+                onDeleteItemConfirmed = {},
+                onSyncMenuClicked = {},
+                onSyncMenuDismissed = {},
+                onSyncSettingsRequested = {},
+                onSyncSettingsDismissed = {},
+                onSyncSettingsSaved = {},
+                onSyncNowRequested = {},
+                onConfirmCreateMissingList = {}
+            )
+        }
+
+        val passwordNode = composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_PASSWORD_FIELD)
+            .fetchSemanticsNode()
+        val editableText = if (passwordNode.config.contains(SemanticsProperties.EditableText)) {
+            passwordNode.config[SemanticsProperties.EditableText].text
+        } else {
+            null
+        }
+        assertTrue("Raw password should not be exposed", editableText.isNullOrEmpty())
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_PASSWORD_FIELD).performClick()
+        composeRule.waitForIdle()
+        assertTrue(
+            "Password field should show stored-password placeholder",
+            composeRule.onAllNodesWithText("Saved password on device", useUnmergedTree = true)
+                .fetchSemanticsNodes()
+                .isNotEmpty()
+        )
+    }
+
+    @Test
+    fun syncSettingsSheetShowsInlineProgressAndCreateListAction() {
+        composeRule.setContent {
+            ShoppingListScreen(
+                uiState = ShoppingListUiState(
+                    isSyncSettingsVisible = true,
+                    syncSettings = ShoppingListSyncSettingsUiState(
+                        isSaving = true,
+                        statusMessage = "Remote list Groceries does not exist yet",
+                        pendingAction = CalDavPendingAction.CreateMissingList
+                    )
+                ),
+                onInputValueChange = {},
+                onAddItem = {},
+                onSuggestionSelected = {},
+                onPendingItemClick = {},
+                onPurchasedItemClick = {},
+                onPurchaseSelectedItems = {},
+                onDeleteItemRequested = {},
+                onDeleteItemDismissed = {},
+                onDeleteItemConfirmed = {},
+                onSyncMenuClicked = {},
+                onSyncMenuDismissed = {},
+                onSyncSettingsRequested = {},
+                onSyncSettingsDismissed = {},
+                onSyncSettingsSaved = {},
+                onSyncNowRequested = {},
+                onConfirmCreateMissingList = {}
+            )
+        }
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_PROGRESS_INDICATOR).assertExists()
+        composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_CREATE_LIST_BUTTON).assertExists()
     }
 
     @Test
@@ -267,7 +355,7 @@ class ShoppingListSyncSettingsSheetTest {
                 onSyncMenuDismissed = {},
                 onSyncSettingsRequested = {},
                 onSyncSettingsDismissed = {},
-                onSyncSettingsSaved = { _ -> },
+                onSyncSettingsSaved = {},
                 onSyncNowRequested = {},
                 onConfirmCreateMissingList = { createClicked = true }
             )
