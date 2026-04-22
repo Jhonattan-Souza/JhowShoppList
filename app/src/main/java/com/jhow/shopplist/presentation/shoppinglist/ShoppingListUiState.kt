@@ -11,6 +11,8 @@ data class ShoppingListSyncSettingsUiState(
     val username: String = "",
     val password: String = "",
     val listName: String = "",
+    val hasStoredPassword: Boolean = false,
+    val isSaving: Boolean = false,
     val syncState: CalDavSyncState = CalDavSyncState.Disabled,
     val statusMessage: String? = null,
     val pendingAction: CalDavPendingAction = CalDavPendingAction.None

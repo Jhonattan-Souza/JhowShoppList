@@ -46,6 +46,12 @@ class ShoppingListViewModel @Inject constructor(
     private val itemPendingDeletion = MutableStateFlow<com.jhow.shopplist.domain.model.ShoppingItem?>(null)
     private val syncMenuExpanded = MutableStateFlow(false)
     private val syncSettingsVisible = MutableStateFlow(false)
+    private val syncSettingsForm = MutableStateFlow(ShoppingListSyncSettingsUiState())
+    private val configFlow = getCalDavSyncConfigUseCase().stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = com.jhow.shopplist.domain.sync.CalDavSyncConfig()
+    )
     private val inputWithSuggestions = combine(observeItemNamesUseCase(), inputValue) { allItemNames, currentInput ->
         currentInput to buildSuggestions(allItemNames = allItemNames, currentInput = currentInput)
     }
@@ -75,20 +81,32 @@ class ShoppingListViewModel @Inject constructor(
         shoppingState,
         syncMenuExpanded,
         syncSettingsVisible,
-        getCalDavSyncConfigUseCase()
-    ) { shopping, isMenuExpanded, isSettingsVisible, config ->
-        shopping.copy(
-            isSyncMenuExpanded = isMenuExpanded,
-            isSyncSettingsVisible = isSettingsVisible,
-            syncSettings = ShoppingListSyncSettingsUiState(
+        configFlow,
+        syncSettingsForm
+    ) { shopping, isMenuExpanded, isSettingsVisible, config, form ->
+        val hydratedForm = if (!isSettingsVisible) {
+            form.copy(
                 enabled = config.enabled,
                 serverUrl = config.serverUrl,
                 username = config.username,
                 listName = config.listName,
+                hasStoredPassword = config.hasStoredPassword,
                 syncState = config.syncState,
                 statusMessage = config.statusMessage,
                 pendingAction = config.pendingAction
             )
+        } else {
+            form.copy(
+                syncState = config.syncState,
+                statusMessage = config.statusMessage,
+                pendingAction = config.pendingAction,
+                hasStoredPassword = if (form.password.isBlank()) config.hasStoredPassword else false
+            )
+        }
+        shopping.copy(
+            isSyncMenuExpanded = isMenuExpanded,
+            isSyncSettingsVisible = isSettingsVisible,
+            syncSettings = hydratedForm
         )
     }.stateIn(
         scope = viewModelScope,
@@ -170,7 +188,39 @@ class ShoppingListViewModel @Inject constructor(
 
     fun onSyncSettingsRequested() {
         syncMenuExpanded.value = false
+        val config = configFlow.value
+        syncSettingsForm.value = ShoppingListSyncSettingsUiState(
+            enabled = config.enabled,
+            serverUrl = config.serverUrl,
+            username = config.username,
+            listName = config.listName,
+            hasStoredPassword = config.hasStoredPassword,
+            password = "",
+            syncState = config.syncState,
+            statusMessage = config.statusMessage,
+            pendingAction = config.pendingAction
+        )
         syncSettingsVisible.value = true
+    }
+
+    fun onSyncServerUrlChanged(value: String) {
+        syncSettingsForm.update { it.copy(serverUrl = value) }
+    }
+
+    fun onSyncUsernameChanged(value: String) {
+        syncSettingsForm.update { it.copy(username = value) }
+    }
+
+    fun onSyncPasswordChanged(value: String) {
+        syncSettingsForm.update { it.copy(password = value, hasStoredPassword = it.hasStoredPassword && value.isBlank()) }
+    }
+
+    fun onSyncListNameChanged(value: String) {
+        syncSettingsForm.update { it.copy(listName = value) }
+    }
+
+    fun onSyncEnabledChanged(value: Boolean) {
+        syncSettingsForm.update { it.copy(enabled = value) }
     }
 
     fun onSyncSettingsDismissed() {
