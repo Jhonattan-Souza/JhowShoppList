@@ -12,6 +12,28 @@ class FakeCalDavConfigRepository : CalDavConfigRepository {
 
     val currentConfig: CalDavSyncConfig get() = _config.value
 
+    fun seed(
+        enabled: Boolean = false,
+        serverUrl: String = "",
+        username: String = "",
+        listName: String = "",
+        syncState: CalDavSyncState = CalDavSyncState.Disabled,
+        statusMessage: String? = null,
+        pendingAction: CalDavPendingAction = CalDavPendingAction.None,
+        lastSyncAt: Long? = null
+    ) {
+        _config.value = CalDavSyncConfig(
+            enabled = enabled,
+            serverUrl = serverUrl,
+            username = username,
+            listName = listName,
+            syncState = syncState,
+            statusMessage = statusMessage,
+            pendingAction = pendingAction,
+            lastSyncAt = lastSyncAt
+        )
+    }
+
     override fun observeConfig(): Flow<CalDavSyncConfig> = _config
 
     override suspend fun saveConfig(
