@@ -11,6 +11,8 @@ class FakePasswordStorage : PasswordStorage {
 
     override suspend fun load(): String? = password
 
+    override suspend fun hasSavedPassword(): Boolean = password != null
+
     override suspend fun clear() {
         password = null
     }

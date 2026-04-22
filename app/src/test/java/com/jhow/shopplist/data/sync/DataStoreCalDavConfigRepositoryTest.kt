@@ -8,7 +8,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import app.cash.turbine.test
 import com.jhow.shopplist.domain.model.CalDavPendingAction
 import com.jhow.shopplist.domain.model.CalDavSyncState
-import com.jhow.shopplist.domain.sync.PasswordStorage
+import com.jhow.shopplist.testing.FakePasswordStorage
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -71,6 +71,31 @@ class DataStoreCalDavConfigRepositoryTest {
         )
 
         assertEquals("secret", repository.getPassword())
+
+        repository.observeConfig().test {
+            val config = awaitItem()
+            assertEquals(true, config.hasStoredPassword)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `saved config reports password presence without exposing password`() = runTest {
+        val repository = testRepository()
+
+        repository.saveConfig(
+            enabled = true,
+            serverUrl = "https://dav.example.com",
+            username = "jhow",
+            listName = "Groceries",
+            password = "secret"
+        )
+
+        repository.observeConfig().test {
+            val config = awaitItem()
+            assertEquals(true, config.hasStoredPassword)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
@@ -239,19 +264,5 @@ class DataStoreCalDavConfigRepositoryTest {
         val tempDir = tempFolder.newFolder("caldav-test")
         val dataStore = PreferenceDataStoreFactory.create { File(tempDir, "test_prefs.preferences_pb") }
         return DataStoreCalDavConfigRepository(dataStore, FakePasswordStorage()) to dataStore
-    }
-
-    private class FakePasswordStorage : PasswordStorage {
-        private var storedPassword: String? = null
-
-        override suspend fun save(password: String) {
-            storedPassword = password
-        }
-
-        override suspend fun load(): String? = storedPassword
-
-        override suspend fun clear() {
-            storedPassword = null
-        }
     }
 }

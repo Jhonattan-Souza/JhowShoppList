@@ -14,7 +14,8 @@ data class CalDavSyncConfig(
     val pendingAction: CalDavPendingAction = CalDavPendingAction.None,
     val lastSyncAt: Long? = null,
     val lastResolvedCollectionUrl: String? = null,
-    val createListRequested: Boolean = false
+    val createListRequested: Boolean = false,
+    val hasStoredPassword: Boolean = false
 ) {
     val isReadyToSync: Boolean
         get() = enabled && serverUrl.isNotBlank() && username.isNotBlank() && listName.isNotBlank()
