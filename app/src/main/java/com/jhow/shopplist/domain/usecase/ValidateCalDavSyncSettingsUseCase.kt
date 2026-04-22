@@ -6,11 +6,11 @@ import com.jhow.shopplist.domain.sync.CalDavConfigRepository
 import java.util.concurrent.CancellationException
 import javax.inject.Inject
 
-class ValidateCalDavSyncSettingsUseCase @Inject constructor(
+open class ValidateCalDavSyncSettingsUseCase @Inject constructor(
     private val configRepository: CalDavConfigRepository,
     private val listLocator: CalDavListLocator
 ) {
-    suspend operator fun invoke(
+    open suspend operator fun invoke(
         enabled: Boolean,
         serverUrl: String,
         username: String,
