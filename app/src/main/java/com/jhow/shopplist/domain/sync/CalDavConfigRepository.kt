@@ -29,7 +29,7 @@ interface CalDavConfigRepository {
         serverUrl: String,
         username: String,
         listName: String,
-        password: String
+        newPassword: String?
     )
 
     suspend fun updateSyncState(

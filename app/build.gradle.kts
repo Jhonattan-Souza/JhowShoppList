@@ -173,14 +173,17 @@ tasks.register<JacocoReport>("jacocoFullReport") {
     classDirectories.setFrom(files(debugTree, debugJavaTree))
     sourceDirectories.setFrom(files("src/main/java"))
     executionData.setFrom(
-        fileTree(layout.buildDirectory.get().asFile) {
-            include(
-                "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
-                "outputs/code_coverage/**/connected/**/*.ec",
-                "outputs/managed_device_code_coverage/**/*.ec",
-                "**/*.ec"
-            )
-        }
+        files(
+            fileTree("${layout.buildDirectory.get().asFile}/outputs/unit_test_code_coverage/debugUnitTest") {
+                include("*.exec")
+            },
+            fileTree("${layout.buildDirectory.get().asFile}/outputs/code_coverage") {
+                include("**/connected/**/*.ec")
+            },
+            fileTree("${layout.buildDirectory.get().asFile}/outputs/managed_device_code_coverage") {
+                include("**/*.ec")
+            }
+        )
     )
 }
 
@@ -190,14 +193,17 @@ tasks.register<JacocoCoverageVerification>("verifyDebugCoverage") {
     classDirectories.setFrom(files(debugTree, debugJavaTree))
     sourceDirectories.setFrom(files("src/main/java"))
     executionData.setFrom(
-        fileTree(layout.buildDirectory.get().asFile) {
-            include(
-                "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
-                "outputs/code_coverage/**/connected/**/*.ec",
-                "outputs/managed_device_code_coverage/**/*.ec",
-                "**/*.ec"
-            )
-        }
+        files(
+            fileTree("${layout.buildDirectory.get().asFile}/outputs/unit_test_code_coverage/debugUnitTest") {
+                include("*.exec")
+            },
+            fileTree("${layout.buildDirectory.get().asFile}/outputs/code_coverage") {
+                include("**/connected/**/*.ec")
+            },
+            fileTree("${layout.buildDirectory.get().asFile}/outputs/managed_device_code_coverage") {
+                include("**/*.ec")
+            }
+        )
     )
 
     violationRules {

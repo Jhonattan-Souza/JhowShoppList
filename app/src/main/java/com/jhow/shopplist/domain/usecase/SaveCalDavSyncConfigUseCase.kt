@@ -14,7 +14,13 @@ class SaveCalDavSyncConfigUseCase @Inject constructor(
         password: String,
         resolvedCollectionUrl: String? = null
     ) {
-        repository.saveConfig(enabled, serverUrl, username, listName, password)
+        repository.saveConfig(
+            enabled = enabled,
+            serverUrl = serverUrl,
+            username = username,
+            listName = listName,
+            newPassword = password.ifBlank { null }
+        )
         repository.setResolvedCollectionUrl(resolvedCollectionUrl)
     }
 }

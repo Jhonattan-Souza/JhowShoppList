@@ -31,7 +31,7 @@ class DataStoreCalDavConfigRepositoryTest {
             serverUrl = "https://dav.example.com",
             username = "jhow",
             listName = "Groceries",
-            password = "secret"
+            newPassword = "secret"
         )
         repository.updateSyncState(
             state = CalDavSyncState.UserActionRequired,
@@ -52,7 +52,7 @@ class DataStoreCalDavConfigRepositoryTest {
     }
 
     @Test
-    fun `saving blank password preserves previous password`() = runTest {
+    fun `saving null password preserves previous password`() = runTest {
         val repository = testRepository()
 
         repository.saveConfig(
@@ -60,14 +60,14 @@ class DataStoreCalDavConfigRepositoryTest {
             serverUrl = "https://dav.example.com",
             username = "jhow",
             listName = "Groceries",
-            password = "secret"
+            newPassword = "secret"
         )
         repository.saveConfig(
             enabled = true,
             serverUrl = "https://dav.example.com",
             username = "jhow",
             listName = "Groceries",
-            password = ""
+            newPassword = null
         )
 
         assertEquals("secret", repository.getPassword())
@@ -88,7 +88,7 @@ class DataStoreCalDavConfigRepositoryTest {
             serverUrl = "https://dav.example.com",
             username = "jhow",
             listName = "Groceries",
-            password = "secret"
+            newPassword = "secret"
         )
 
         repository.observeConfig().test {
@@ -130,7 +130,7 @@ class DataStoreCalDavConfigRepositoryTest {
             serverUrl = "https://dav.example.com",
             username = "jhow",
             listName = "Groceries",
-            password = "secret"
+            newPassword = "secret"
         )
         repository.updateSyncState(
             state = CalDavSyncState.Success,
@@ -203,7 +203,7 @@ class DataStoreCalDavConfigRepositoryTest {
             serverUrl = "https://dav.example.com",
             username = "jhow",
             listName = "Groceries",
-            password = "secret"
+            newPassword = "secret"
         )
         repository.setResolvedCollectionUrl("https://dav.example.com/lists/groceries/")
         repository.setCreateListRequested(true)
@@ -213,7 +213,7 @@ class DataStoreCalDavConfigRepositoryTest {
             serverUrl = "https://dav.example.com",
             username = "jhow",
             listName = "Groceries",
-            password = "secret"
+            newPassword = "secret"
         )
 
         repository.observeConfig().test {
@@ -233,7 +233,7 @@ class DataStoreCalDavConfigRepositoryTest {
             serverUrl = "https://dav.example.com",
             username = "jhow",
             listName = "Groceries",
-            password = "secret"
+            newPassword = "secret"
         )
         repository.updateSyncState(
             state = CalDavSyncState.UserActionRequired,
@@ -246,7 +246,7 @@ class DataStoreCalDavConfigRepositoryTest {
             serverUrl = "https://dav.example.com",
             username = "jhow",
             listName = "Groceries",
-            password = "secret"
+            newPassword = "secret"
         )
 
         repository.observeConfig().test {

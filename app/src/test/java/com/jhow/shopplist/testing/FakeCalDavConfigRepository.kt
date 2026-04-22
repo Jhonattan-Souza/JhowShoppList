@@ -6,12 +6,14 @@ import com.jhow.shopplist.domain.sync.CalDavConfigRepository
 import com.jhow.shopplist.domain.sync.CalDavSyncConfig
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 
 class FakeCalDavConfigRepository : CalDavConfigRepository {
     private val _config = MutableStateFlow(CalDavSyncConfig())
     private var storedPassword: String? = DEFAULT_STORED_PASSWORD
 
-    val currentConfig: CalDavSyncConfig get() = _config.value
+    val currentConfig: CalDavSyncConfig
+        get() = _config.value.copy(hasStoredPassword = storedPassword != null)
     var atomicWriteCount = 0
         private set
 
@@ -58,17 +60,19 @@ class FakeCalDavConfigRepository : CalDavConfigRepository {
         storedPassword = null
     }
 
-    override fun observeConfig(): Flow<CalDavSyncConfig> = _config
+    override fun observeConfig(): Flow<CalDavSyncConfig> = _config.map { config ->
+        config.copy(hasStoredPassword = storedPassword != null)
+    }
 
     override suspend fun saveConfig(
         enabled: Boolean,
         serverUrl: String,
         username: String,
         listName: String,
-        password: String
+        newPassword: String?
     ) = atomicWrite {
-        if (password.isNotBlank()) {
-            storedPassword = password
+        if (newPassword != null) {
+            storedPassword = newPassword
         }
 
         _config.value = _config.value.copy(
@@ -80,8 +84,7 @@ class FakeCalDavConfigRepository : CalDavConfigRepository {
             pendingAction = CalDavPendingAction.None,
             statusMessage = null,
             lastResolvedCollectionUrl = null,
-            createListRequested = false,
-            hasStoredPassword = if (password.isNotBlank()) true else _config.value.hasStoredPassword
+            createListRequested = false
         )
     }
 

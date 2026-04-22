@@ -7,6 +7,7 @@ import com.jhow.shopplist.data.sync.CalDavListLocator
 import com.jhow.shopplist.domain.model.CalDavValidationResult
 import com.jhow.shopplist.testing.FakeCalDavConfigRepository
 import java.util.concurrent.CancellationException
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.fail
@@ -245,6 +246,20 @@ class ValidateCalDavSyncSettingsUseCaseTest {
 
         assertEquals(true, configRepository.currentConfig.hasStoredPassword)
         assertEquals("fake-password", configRepository.getPassword())
+    }
+
+    @Test
+    fun `fake config repository derives stored password flag from stored password`() = runTest {
+        val configRepository = FakeCalDavConfigRepository().apply {
+            seed(hasStoredPassword = false)
+            setStoredPasswordAvailable()
+        }
+
+        assertEquals(true, configRepository.observeConfig().first().hasStoredPassword)
+
+        configRepository.clearStoredPassword()
+
+        assertEquals(false, configRepository.observeConfig().first().hasStoredPassword)
     }
 
     private class FakeDiscoveryService(
