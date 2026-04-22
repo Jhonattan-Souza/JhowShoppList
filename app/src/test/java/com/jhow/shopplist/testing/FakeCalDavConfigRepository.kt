@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 class FakeCalDavConfigRepository : CalDavConfigRepository {
     private val _config = MutableStateFlow(CalDavSyncConfig())
+    private var storedPassword: String? = DEFAULT_STORED_PASSWORD
 
     val currentConfig: CalDavSyncConfig get() = _config.value
     var atomicWriteCount = 0
@@ -29,8 +30,11 @@ class FakeCalDavConfigRepository : CalDavConfigRepository {
         pendingAction: CalDavPendingAction = CalDavPendingAction.None,
         lastSyncAt: Long? = null,
         lastResolvedCollectionUrl: String? = null,
-        createListRequested: Boolean = false
+        createListRequested: Boolean = false,
+        hasStoredPassword: Boolean = false
     ) {
+        storedPassword = if (hasStoredPassword) DEFAULT_STORED_PASSWORD else null
+
         _config.value = CalDavSyncConfig(
             enabled = enabled,
             serverUrl = serverUrl,
@@ -41,8 +45,17 @@ class FakeCalDavConfigRepository : CalDavConfigRepository {
             pendingAction = pendingAction,
             lastSyncAt = lastSyncAt,
             lastResolvedCollectionUrl = lastResolvedCollectionUrl,
-            createListRequested = createListRequested
+            createListRequested = createListRequested,
+            hasStoredPassword = hasStoredPassword
         )
+    }
+
+    fun setStoredPasswordAvailable() {
+        storedPassword = DEFAULT_STORED_PASSWORD
+    }
+
+    fun clearStoredPassword() {
+        storedPassword = null
     }
 
     override fun observeConfig(): Flow<CalDavSyncConfig> = _config
@@ -54,6 +67,10 @@ class FakeCalDavConfigRepository : CalDavConfigRepository {
         listName: String,
         password: String
     ) = atomicWrite {
+        if (password.isNotBlank()) {
+            storedPassword = password
+        }
+
         _config.value = _config.value.copy(
             enabled = enabled,
             serverUrl = serverUrl,
@@ -63,7 +80,8 @@ class FakeCalDavConfigRepository : CalDavConfigRepository {
             pendingAction = CalDavPendingAction.None,
             statusMessage = null,
             lastResolvedCollectionUrl = null,
-            createListRequested = false
+            createListRequested = false,
+            hasStoredPassword = if (password.isNotBlank()) true else _config.value.hasStoredPassword
         )
     }
 
@@ -81,7 +99,7 @@ class FakeCalDavConfigRepository : CalDavConfigRepository {
         )
     }
 
-    override suspend fun getPassword(): String? = "fake-password"
+    override suspend fun getPassword(): String? = storedPassword
 
     override suspend fun setCreateListRequested(requested: Boolean) = atomicWrite {
         _config.value = _config.value.copy(createListRequested = requested)
@@ -98,5 +116,9 @@ class FakeCalDavConfigRepository : CalDavConfigRepository {
             pendingAction = CalDavPendingAction.None,
             statusMessage = null
         )
+    }
+
+    private companion object {
+        const val DEFAULT_STORED_PASSWORD = "fake-password"
     }
 }
