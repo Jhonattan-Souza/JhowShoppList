@@ -34,4 +34,5 @@
     <string name="sync_state_ambiguous_list_name">Ambiguous list name</string>
     <string name="sync_state_user_action_required">User action required</string>
     <string name="sync_state_warning">Warning</string>
+    <string name="sync_password_saved_placeholder">Saved password on device</string>
 </resources>

@@ -47,6 +47,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -115,7 +116,12 @@ fun ShoppingListRoute(
         onSyncSettingsDismissed = viewModel::onSyncSettingsDismissed,
         onSyncSettingsSaved = viewModel::onSyncSettingsSaved,
         onSyncNowRequested = viewModel::onSyncNowRequested,
-        onConfirmCreateMissingList = viewModel::onConfirmCreateMissingList
+        onConfirmCreateMissingList = viewModel::onConfirmCreateMissingList,
+        onSyncEnabledChanged = viewModel::onSyncEnabledChanged,
+        onSyncServerUrlChanged = viewModel::onSyncServerUrlChanged,
+        onSyncUsernameChanged = viewModel::onSyncUsernameChanged,
+        onSyncPasswordChanged = viewModel::onSyncPasswordChanged,
+        onSyncListNameChanged = viewModel::onSyncListNameChanged
     )
 }
 
@@ -139,7 +145,12 @@ fun ShoppingListScreen(
     onSyncSettingsSaved: () -> Unit,
     onSyncNowRequested: () -> Unit,
     onConfirmCreateMissingList: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onSyncEnabledChanged: (Boolean) -> Unit = {},
+    onSyncServerUrlChanged: (String) -> Unit = {},
+    onSyncUsernameChanged: (String) -> Unit = {},
+    onSyncPasswordChanged: (String) -> Unit = {},
+    onSyncListNameChanged: (String) -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
     var inputBarContentHeightPx by remember { mutableIntStateOf(0) }
@@ -233,11 +244,6 @@ fun ShoppingListScreen(
 
         if (uiState.isSyncSettingsVisible) {
             val settings = uiState.syncSettings
-            var enabled by remember { mutableStateOf(settings.enabled) }
-            var serverUrl by remember { mutableStateOf(settings.serverUrl) }
-            var username by remember { mutableStateOf(settings.username) }
-            var password by remember { mutableStateOf(settings.password) }
-            var listName by remember { mutableStateOf(settings.listName) }
 
             ModalBottomSheet(
                 onDismissRequest = onSyncSettingsDismissed,
@@ -268,9 +274,10 @@ fun ShoppingListScreen(
                             style = MaterialTheme.typography.bodyLarge
                         )
                         Switch(
-                            checked = enabled,
-                            onCheckedChange = { enabled = it },
-                            modifier = Modifier.testTag(ShoppingListTestTags.SYNC_ENABLED_SWITCH)
+                            checked = settings.enabled,
+                            onCheckedChange = onSyncEnabledChanged,
+                            modifier = Modifier.testTag(ShoppingListTestTags.SYNC_ENABLED_SWITCH),
+                            enabled = !settings.isSaving
                         )
                     }
 
@@ -284,50 +291,68 @@ fun ShoppingListScreen(
                     )
 
                     OutlinedTextField(
-                        value = serverUrl,
-                        onValueChange = { serverUrl = it },
+                        value = settings.serverUrl,
+                        onValueChange = onSyncServerUrlChanged,
                         label = { Text(stringResource(R.string.sync_server_label)) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 8.dp)
                             .testTag(ShoppingListTestTags.SYNC_SERVER_FIELD),
-                        singleLine = true
+                        singleLine = true,
+                        enabled = !settings.isSaving
                     )
 
                     OutlinedTextField(
-                        value = username,
-                        onValueChange = { username = it },
+                        value = settings.username,
+                        onValueChange = onSyncUsernameChanged,
                         label = { Text(stringResource(R.string.sync_username_label)) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 8.dp)
                             .testTag(ShoppingListTestTags.SYNC_USERNAME_FIELD),
-                        singleLine = true
+                        singleLine = true,
+                        enabled = !settings.isSaving
                     )
 
                     OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
+                        value = settings.password,
+                        onValueChange = onSyncPasswordChanged,
                         label = { Text(stringResource(R.string.sync_password_label)) },
+                        placeholder = {
+                            if (settings.hasStoredPassword && settings.password.isBlank()) {
+                                Text(stringResource(R.string.sync_password_saved_placeholder))
+                            }
+                        },
+                        visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 8.dp)
                             .testTag(ShoppingListTestTags.SYNC_PASSWORD_FIELD),
                         singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        enabled = !settings.isSaving
                     )
 
                     OutlinedTextField(
-                        value = listName,
-                        onValueChange = { listName = it },
+                        value = settings.listName,
+                        onValueChange = onSyncListNameChanged,
                         label = { Text(stringResource(R.string.sync_list_name_label)) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(bottom = 8.dp)
                             .testTag(ShoppingListTestTags.SYNC_LIST_NAME_FIELD),
-                        singleLine = true
+                        singleLine = true,
+                        enabled = !settings.isSaving
                     )
+
+                    if (settings.isSaving) {
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp)
+                                .testTag(ShoppingListTestTags.SYNC_PROGRESS_INDICATOR)
+                        )
+                    }
 
                     if (settings.statusMessage != null) {
                         Text(
@@ -344,6 +369,7 @@ fun ShoppingListScreen(
                     if (settings.pendingAction == CalDavPendingAction.CreateMissingList) {
                         Button(
                             onClick = onConfirmCreateMissingList,
+                            enabled = !settings.isSaving,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(bottom = 8.dp)
@@ -355,6 +381,7 @@ fun ShoppingListScreen(
 
                     Button(
                         onClick = onSyncSettingsSaved,
+                        enabled = !settings.isSaving,
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag(ShoppingListTestTags.SYNC_SAVE_BUTTON)
