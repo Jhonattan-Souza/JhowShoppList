@@ -9,10 +9,6 @@ class ConfirmCreateCalDavListUseCase @Inject constructor(
     private val repository: CalDavConfigRepository
 ) {
     suspend operator fun invoke() {
-        repository.updateSyncState(
-            state = CalDavSyncState.Idle,
-            message = null,
-            pendingAction = CalDavPendingAction.None
-        )
+        repository.confirmCreateList()
     }
 }

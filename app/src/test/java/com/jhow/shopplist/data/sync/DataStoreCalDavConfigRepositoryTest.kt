@@ -139,6 +139,67 @@ class DataStoreCalDavConfigRepositoryTest {
     }
 
     @Test
+    fun `setCreateListRequested persists boolean flag`() = runTest {
+        val repository = testRepository()
+
+        repository.setCreateListRequested(true)
+
+        repository.observeConfig().test {
+            val config = awaitItem()
+            assertEquals(true, config.createListRequested)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `setResolvedCollectionUrl persists url and null clears it`() = runTest {
+        val repository = testRepository()
+
+        repository.setResolvedCollectionUrl("https://dav.example.com/lists/groceries/")
+
+        repository.observeConfig().test {
+            val configWithUrl = awaitItem()
+            assertEquals("https://dav.example.com/lists/groceries/", configWithUrl.lastResolvedCollectionUrl)
+
+            repository.setResolvedCollectionUrl(null)
+
+            val configWithoutUrl = awaitItem()
+            assertEquals(null, configWithoutUrl.lastResolvedCollectionUrl)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `saveConfig clears lastResolvedCollectionUrl and createListRequested`() = runTest {
+        val repository = testRepository()
+
+        repository.saveConfig(
+            enabled = true,
+            serverUrl = "https://dav.example.com",
+            username = "jhow",
+            listName = "Groceries",
+            password = "secret"
+        )
+        repository.setResolvedCollectionUrl("https://dav.example.com/lists/groceries/")
+        repository.setCreateListRequested(true)
+
+        repository.saveConfig(
+            enabled = true,
+            serverUrl = "https://dav.example.com",
+            username = "jhow",
+            listName = "Groceries",
+            password = "secret"
+        )
+
+        repository.observeConfig().test {
+            val config = awaitItem()
+            assertEquals(null, config.lastResolvedCollectionUrl)
+            assertEquals(false, config.createListRequested)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `saveConfig with enabled true resets sync state to Idle and clears status and pending action`() = runTest {
         val repository = testRepository()
 

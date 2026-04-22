@@ -10,7 +10,8 @@ import kotlinx.coroutines.flow.first
 class CalDavShoppingSyncGateway @Inject constructor(
     private val configRepository: CalDavConfigRepository,
     private val listLocator: CalDavListLocator,
-    private val executor: CalDavSyncExecutor
+    private val executor: CalDavSyncExecutor,
+    private val discoveryService: CalDavDiscoveryService
 ) : ShoppingListSyncGateway {
 
     override suspend fun sync(): CalDavSyncOutcome {
@@ -28,14 +29,46 @@ class CalDavShoppingSyncGateway @Inject constructor(
                 listName = config.listName
             )
         ) {
-            is CalDavListLocator.Result.Missing -> CalDavSyncOutcome.UserActionRequired(
-                message = "Remote list ${config.listName} is missing",
-                pendingAction = CalDavPendingAction.CreateMissingList
-            )
+            is CalDavListLocator.Result.Missing -> if (config.createListRequested) {
+                val href = try {
+                    discoveryService.createTaskCollection(
+                        serverUrl = config.serverUrl,
+                        username = config.username,
+                        password = password,
+                        listName = config.listName
+                    )
+                } catch (createError: Throwable) {
+                    when (
+                        val retryLocated = listLocator.locate(
+                            serverUrl = config.serverUrl,
+                            username = config.username,
+                            password = password,
+                            listName = config.listName
+                        )
+                    ) {
+                        is CalDavListLocator.Result.Found -> retryLocated.href
+                        is CalDavListLocator.Result.Missing -> throw createError
+                        is CalDavListLocator.Result.Ambiguous -> return CalDavSyncOutcome.ConfigurationFailure(
+                            "Multiple lists named ${config.listName} were found"
+                        )
+                    }
+                }
+                configRepository.setResolvedCollectionUrl(href)
+                configRepository.setCreateListRequested(false)
+                executor.execute(collectionHref = href)
+            } else {
+                CalDavSyncOutcome.UserActionRequired(
+                    message = "Remote list ${config.listName} is missing",
+                    pendingAction = CalDavPendingAction.CreateMissingList
+                )
+            }
             is CalDavListLocator.Result.Ambiguous -> CalDavSyncOutcome.ConfigurationFailure(
                 "Multiple lists named ${config.listName} were found"
             )
-            is CalDavListLocator.Result.Found -> executor.execute(collectionHref = located.href)
+            is CalDavListLocator.Result.Found -> {
+                configRepository.setResolvedCollectionUrl(located.href)
+                executor.execute(collectionHref = located.href)
+            }
         }
     }
 }

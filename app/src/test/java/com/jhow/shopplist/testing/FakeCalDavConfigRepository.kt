@@ -11,6 +11,13 @@ class FakeCalDavConfigRepository : CalDavConfigRepository {
     private val _config = MutableStateFlow(CalDavSyncConfig())
 
     val currentConfig: CalDavSyncConfig get() = _config.value
+    var atomicWriteCount = 0
+        private set
+
+    private fun atomicWrite(block: () -> Unit) {
+        block()
+        atomicWriteCount++
+    }
 
     fun seed(
         enabled: Boolean = false,
@@ -20,7 +27,9 @@ class FakeCalDavConfigRepository : CalDavConfigRepository {
         syncState: CalDavSyncState = CalDavSyncState.Disabled,
         statusMessage: String? = null,
         pendingAction: CalDavPendingAction = CalDavPendingAction.None,
-        lastSyncAt: Long? = null
+        lastSyncAt: Long? = null,
+        lastResolvedCollectionUrl: String? = null,
+        createListRequested: Boolean = false
     ) {
         _config.value = CalDavSyncConfig(
             enabled = enabled,
@@ -30,7 +39,9 @@ class FakeCalDavConfigRepository : CalDavConfigRepository {
             syncState = syncState,
             statusMessage = statusMessage,
             pendingAction = pendingAction,
-            lastSyncAt = lastSyncAt
+            lastSyncAt = lastSyncAt,
+            lastResolvedCollectionUrl = lastResolvedCollectionUrl,
+            createListRequested = createListRequested
         )
     }
 
@@ -42,7 +53,7 @@ class FakeCalDavConfigRepository : CalDavConfigRepository {
         username: String,
         listName: String,
         password: String
-    ) {
+    ) = atomicWrite {
         _config.value = _config.value.copy(
             enabled = enabled,
             serverUrl = serverUrl,
@@ -50,7 +61,9 @@ class FakeCalDavConfigRepository : CalDavConfigRepository {
             listName = listName,
             syncState = if (enabled) CalDavSyncState.Idle else CalDavSyncState.Disabled,
             pendingAction = CalDavPendingAction.None,
-            statusMessage = null
+            statusMessage = null,
+            lastResolvedCollectionUrl = null,
+            createListRequested = false
         )
     }
 
@@ -59,7 +72,7 @@ class FakeCalDavConfigRepository : CalDavConfigRepository {
         message: String?,
         pendingAction: CalDavPendingAction,
         lastSyncAt: Long?
-    ) {
+    ) = atomicWrite {
         _config.value = _config.value.copy(
             syncState = state,
             statusMessage = message,
@@ -69,4 +82,21 @@ class FakeCalDavConfigRepository : CalDavConfigRepository {
     }
 
     override suspend fun getPassword(): String? = "fake-password"
+
+    override suspend fun setCreateListRequested(requested: Boolean) = atomicWrite {
+        _config.value = _config.value.copy(createListRequested = requested)
+    }
+
+    override suspend fun setResolvedCollectionUrl(url: String?) = atomicWrite {
+        _config.value = _config.value.copy(lastResolvedCollectionUrl = url)
+    }
+
+    override suspend fun confirmCreateList() = atomicWrite {
+        _config.value = _config.value.copy(
+            createListRequested = true,
+            syncState = CalDavSyncState.Idle,
+            pendingAction = CalDavPendingAction.None,
+            statusMessage = null
+        )
+    }
 }

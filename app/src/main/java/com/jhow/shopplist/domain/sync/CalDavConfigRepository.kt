@@ -12,7 +12,9 @@ data class CalDavSyncConfig(
     val syncState: CalDavSyncState = CalDavSyncState.Disabled,
     val statusMessage: String? = null,
     val pendingAction: CalDavPendingAction = CalDavPendingAction.None,
-    val lastSyncAt: Long? = null
+    val lastSyncAt: Long? = null,
+    val lastResolvedCollectionUrl: String? = null,
+    val createListRequested: Boolean = false
 ) {
     val isReadyToSync: Boolean
         get() = enabled && serverUrl.isNotBlank() && username.isNotBlank() && listName.isNotBlank()
@@ -37,4 +39,10 @@ interface CalDavConfigRepository {
     )
 
     suspend fun getPassword(): String?
+
+    suspend fun setCreateListRequested(requested: Boolean)
+
+    suspend fun setResolvedCollectionUrl(url: String?)
+
+    suspend fun confirmCreateList()
 }
