@@ -1,7 +1,9 @@
 package com.jhow.shopplist.testing
 
 import com.jhow.shopplist.core.search.ShoppingSearch
+import com.jhow.shopplist.domain.model.RemoteShoppingItemSnapshot
 import com.jhow.shopplist.domain.model.ShoppingItem
+import com.jhow.shopplist.domain.model.ShoppingItemRemoteMetadata
 import com.jhow.shopplist.domain.model.ShoppingItemSyncResult
 import com.jhow.shopplist.domain.model.SyncStatus
 import com.jhow.shopplist.domain.repository.ShoppingListRepository
@@ -16,7 +18,9 @@ class FakeShoppingListRepository : ShoppingListRepository {
     val purchasedRequests = mutableListOf<Set<String>>()
     val pendingRequests = mutableListOf<String>()
     val deletedRequests = mutableListOf<String>()
+    val remoteDeletedRequests = mutableListOf<String>()
     val syncedResults = mutableListOf<List<ShoppingItemSyncResult>>()
+    val importedItems = mutableListOf<RemoteShoppingItemSnapshot>()
 
     override fun observePendingItems(): Flow<List<ShoppingItem>> =
         items.map { currentItems -> currentItems.filter { !it.isPurchased && !it.isDeleted } }
@@ -112,6 +116,51 @@ class FakeShoppingListRepository : ShoppingListRepository {
 
     override suspend fun getPendingSyncItems(): List<ShoppingItem> =
         items.value.filter { it.syncStatus != SyncStatus.SYNCED }
+
+    override suspend fun getAllItems(): List<ShoppingItem> = items.value
+
+    override suspend fun importRemoteItems(items: List<RemoteShoppingItemSnapshot>) {
+        val knownRemoteUids = this.items.value
+            .mapNotNull { it.remoteMetadata.remoteUid }
+            .toSet()
+        val newItems = items.filter { it.remoteUid !in knownRemoteUids }
+        importedItems += newItems
+        val now = 5_000L + this.items.value.size
+        this.items.value = this.items.value + newItems.map { remote ->
+            ShoppingItem(
+                id = "imported-${remote.remoteUid}",
+                name = remote.summary,
+                isPurchased = remote.isCompleted,
+                purchaseCount = if (remote.isCompleted) 1 else 0,
+                createdAt = remote.lastModifiedAt ?: now,
+                updatedAt = remote.lastModifiedAt ?: now,
+                isDeleted = false,
+                syncStatus = SyncStatus.SYNCED,
+                remoteMetadata = ShoppingItemRemoteMetadata(
+                    remoteUid = remote.remoteUid,
+                    remoteHref = remote.href,
+                    remoteEtag = remote.eTag,
+                    remoteLastModifiedAt = remote.lastModifiedAt,
+                    lastSyncedAt = now
+                )
+            )
+        }
+    }
+
+    override suspend fun applyRemoteDeletes(remoteUids: Set<String>) {
+        items.value = items.value.map { item ->
+            if (item.remoteMetadata.remoteUid in remoteUids && !item.isDeleted) {
+                remoteDeletedRequests += item.id
+                item.copy(
+                    isDeleted = true,
+                    updatedAt = item.updatedAt + 100,
+                    syncStatus = SyncStatus.SYNCED
+                )
+            } else {
+                item
+            }
+        }
+    }
 
     override suspend fun markItemsSynced(results: List<ShoppingItemSyncResult>) {
         syncedResults += results
