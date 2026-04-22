@@ -376,6 +376,42 @@ class ShoppingListViewModelTest {
     }
 
     @Test
+    fun `opening sync settings restores saved values and password presence`() = runTest {
+        configRepository.seed(
+            enabled = true,
+            serverUrl = "https://dav.example.com",
+            username = "jhow",
+            listName = "Groceries",
+            syncState = CalDavSyncState.Idle,
+            hasStoredPassword = true
+        )
+        advanceUntilIdle()
+
+        viewModel.onSyncSettingsRequested()
+        advanceUntilIdle()
+
+        val settings = viewModel.uiState.value.syncSettings
+        assertEquals(true, settings.enabled)
+        assertEquals("https://dav.example.com", settings.serverUrl)
+        assertEquals(true, settings.hasStoredPassword)
+        assertEquals("", settings.password)
+    }
+
+    @Test
+    fun `editing sync fields updates view model form state without saving immediately`() = runTest {
+        viewModel.onSyncSettingsRequested()
+        advanceUntilIdle()
+
+        viewModel.onSyncServerUrlChanged("https://changed.example.com")
+        viewModel.onSyncUsernameChanged("alice")
+        advanceUntilIdle()
+
+        assertEquals("https://changed.example.com", viewModel.uiState.value.syncSettings.serverUrl)
+        assertEquals("alice", viewModel.uiState.value.syncSettings.username)
+        assertEquals("", configRepository.currentConfig.serverUrl)
+    }
+
+    @Test
     fun `sync settings projects sync state and pending action from config flow`() = runTest {
         configRepository.seed(
             enabled = true,
