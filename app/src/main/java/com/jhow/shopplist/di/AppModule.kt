@@ -6,10 +6,14 @@ import androidx.work.WorkManager
 import com.jhow.shopplist.data.local.dao.ShoppingItemDao
 import com.jhow.shopplist.data.local.db.AppDatabase
 import com.jhow.shopplist.data.repository.ShoppingListRepositoryImpl
+import com.jhow.shopplist.data.sync.AndroidKeystorePasswordStorage
+import com.jhow.shopplist.data.sync.DataStoreCalDavConfigRepository
 import com.jhow.shopplist.data.sync.FakeShoppingListSyncGateway
 import com.jhow.shopplist.data.sync.WorkManagerShoppingSyncScheduler
 import com.jhow.shopplist.domain.repository.ShoppingListRepository
 import com.jhow.shopplist.core.dispatchers.IoDispatcher
+import com.jhow.shopplist.domain.sync.CalDavConfigRepository
+import com.jhow.shopplist.domain.sync.PasswordStorage
 import com.jhow.shopplist.domain.sync.ShoppingListSyncGateway
 import com.jhow.shopplist.domain.sync.ShoppingSyncScheduler
 import dagger.Binds
@@ -42,6 +46,18 @@ abstract class AppBindModule {
     abstract fun bindShoppingListSyncGateway(
         impl: FakeShoppingListSyncGateway
     ): ShoppingListSyncGateway
+
+    @Binds
+    @Singleton
+    abstract fun bindCalDavConfigRepository(
+        impl: DataStoreCalDavConfigRepository
+    ): CalDavConfigRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPasswordStorage(
+        impl: AndroidKeystorePasswordStorage
+    ): PasswordStorage
 }
 
 @Module
