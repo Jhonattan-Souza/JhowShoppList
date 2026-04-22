@@ -7,8 +7,10 @@ import com.jhow.shopplist.data.local.dao.ShoppingItemDao
 import com.jhow.shopplist.data.local.db.AppDatabase
 import com.jhow.shopplist.data.repository.ShoppingListRepositoryImpl
 import com.jhow.shopplist.data.sync.AndroidKeystorePasswordStorage
+import com.jhow.shopplist.data.sync.CalDavDiscoveryService
+import com.jhow.shopplist.data.sync.CalDavShoppingSyncGateway
 import com.jhow.shopplist.data.sync.DataStoreCalDavConfigRepository
-import com.jhow.shopplist.data.sync.FakeShoppingListSyncGateway
+import com.jhow.shopplist.data.sync.NoOpCalDavDiscoveryService
 import com.jhow.shopplist.data.sync.WorkManagerShoppingSyncScheduler
 import com.jhow.shopplist.domain.repository.ShoppingListRepository
 import com.jhow.shopplist.core.dispatchers.IoDispatcher
@@ -44,7 +46,7 @@ abstract class AppBindModule {
     @Binds
     @Singleton
     abstract fun bindShoppingListSyncGateway(
-        impl: FakeShoppingListSyncGateway
+        impl: CalDavShoppingSyncGateway
     ): ShoppingListSyncGateway
 
     @Binds
@@ -58,6 +60,12 @@ abstract class AppBindModule {
     abstract fun bindPasswordStorage(
         impl: AndroidKeystorePasswordStorage
     ): PasswordStorage
+
+    @Binds
+    @Singleton
+    abstract fun bindCalDavDiscoveryService(
+        impl: NoOpCalDavDiscoveryService
+    ): CalDavDiscoveryService
 }
 
 @Module

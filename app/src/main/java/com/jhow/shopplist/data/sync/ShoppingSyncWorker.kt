@@ -18,8 +18,10 @@ class ShoppingSyncWorker @AssistedInject constructor(
     override suspend fun doWork(): Result = try {
         syncPendingShoppingItemsUseCase()
         Result.success()
-    } catch (_: Throwable) {
+    } catch (exception: IllegalStateException) {
         Result.retry()
+    } catch (_: Throwable) {
+        Result.failure()
     }
 
     companion object {

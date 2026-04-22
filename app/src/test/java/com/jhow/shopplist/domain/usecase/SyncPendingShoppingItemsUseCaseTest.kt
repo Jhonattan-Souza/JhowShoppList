@@ -1,9 +1,14 @@
 package com.jhow.shopplist.domain.usecase
 
+import com.jhow.shopplist.domain.model.CalDavPendingAction
+import com.jhow.shopplist.domain.model.CalDavSyncOutcome
+import com.jhow.shopplist.domain.model.CalDavSyncState
 import com.jhow.shopplist.domain.model.RemoteShoppingItemSnapshot
 import com.jhow.shopplist.domain.model.ShoppingItem
 import com.jhow.shopplist.domain.model.ShoppingItemRemoteMetadata
+import com.jhow.shopplist.domain.model.ShoppingItemSyncResult
 import com.jhow.shopplist.domain.model.SyncStatus
+import com.jhow.shopplist.testing.FakeCalDavConfigRepository
 import com.jhow.shopplist.testing.FakeShoppingListRepository
 import com.jhow.shopplist.testing.FakeShoppingSyncGateway
 import kotlinx.coroutines.test.runTest
@@ -13,14 +18,16 @@ import org.junit.Test
 class SyncPendingShoppingItemsUseCaseTest {
     private val repository = FakeShoppingListRepository()
     private val gateway = FakeShoppingSyncGateway()
-    private val useCase = SyncPendingShoppingItemsUseCase(repository, gateway)
+    private val configRepository = FakeCalDavConfigRepository()
+    private val useCase = SyncPendingShoppingItemsUseCase(repository, gateway, configRepository)
 
     @Test
-    fun `returns zero when there is nothing to sync`() = runTest {
+    fun `returns zero when gateway returns empty success`() = runTest {
+        gateway.nextOutcome = CalDavSyncOutcome.Success(emptyList(), 0)
+
         val syncedCount = useCase()
 
         assertEquals(0, syncedCount)
-        assertEquals(emptyList<List<ShoppingItem>>(), gateway.syncedBatches)
     }
 
     @Test
@@ -31,13 +38,40 @@ class SyncPendingShoppingItemsUseCaseTest {
                 sampleItem(id = "bread", syncStatus = SyncStatus.PENDING_DELETE, isDeleted = true)
             )
         )
+        gateway.nextOutcome = CalDavSyncOutcome.Success(
+            syncedResults = listOf(
+                ShoppingItemSyncResult(id = "milk", serverUpdatedAt = 10_000L),
+                ShoppingItemSyncResult(id = "bread", serverUpdatedAt = 10_001L)
+            ),
+            importedCount = 0
+        )
 
         val syncedCount = useCase()
 
         assertEquals(2, syncedCount)
-        assertEquals(listOf(listOf("milk", "bread")), gateway.syncedBatches.map { batch -> batch.map { it.id } })
-        assertEquals(emptyList<ShoppingItem>(), repository.getPendingSyncItems())
         assertEquals(1, repository.syncedResults.size)
+        assertEquals(emptyList<ShoppingItem>(), repository.getPendingSyncItems())
+    }
+
+    @Test
+    fun `missing remote list stores user action required instead of retrying`() = runTest {
+        configRepository.saveConfig(
+            enabled = true,
+            serverUrl = "https://dav.example.com",
+            username = "jhow",
+            listName = "Groceries",
+            password = "secret"
+        )
+        gateway.nextOutcome = CalDavSyncOutcome.UserActionRequired(
+            message = "Create remote list Groceries",
+            pendingAction = CalDavPendingAction.CreateMissingList
+        )
+
+        val syncedCount = useCase()
+
+        assertEquals(0, syncedCount)
+        assertEquals(CalDavSyncState.UserActionRequired, configRepository.currentConfig.syncState)
+        assertEquals(CalDavPendingAction.CreateMissingList, configRepository.currentConfig.pendingAction)
     }
 
     @Test
