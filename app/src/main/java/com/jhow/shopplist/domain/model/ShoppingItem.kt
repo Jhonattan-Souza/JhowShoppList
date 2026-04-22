@@ -8,5 +8,6 @@ data class ShoppingItem(
     val createdAt: Long,
     val updatedAt: Long,
     val isDeleted: Boolean,
-    val syncStatus: SyncStatus
+    val syncStatus: SyncStatus,
+    val remoteMetadata: ShoppingItemRemoteMetadata = ShoppingItemRemoteMetadata()
 )

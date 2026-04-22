@@ -23,5 +23,10 @@ data class ShoppingItemEntity(
     val createdAt: Long,
     val updatedAt: Long,
     val isDeleted: Boolean,
-    val syncStatus: SyncStatus
+    val syncStatus: SyncStatus,
+    val remoteUid: String? = null,
+    val remoteHref: String? = null,
+    val remoteEtag: String? = null,
+    val remoteLastModifiedAt: Long? = null,
+    val lastSyncedAt: Long? = null
 )

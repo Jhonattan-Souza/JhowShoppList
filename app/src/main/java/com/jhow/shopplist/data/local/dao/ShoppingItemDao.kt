@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import com.jhow.shopplist.data.local.entity.ShoppingItemEntity
+import com.jhow.shopplist.domain.model.ShoppingItemSyncResult
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -120,12 +121,25 @@ interface ShoppingItemDao {
     @Query(
         """
         UPDATE items
-        SET updatedAt = :updatedAt,
-            syncStatus = 'SYNCED'
+        SET updatedAt = :serverUpdatedAt,
+            syncStatus = 'SYNCED',
+            remoteUid = :remoteUid,
+            remoteHref = :remoteHref,
+            remoteEtag = :remoteEtag,
+            remoteLastModifiedAt = :remoteLastModifiedAt,
+            lastSyncedAt = :lastSyncedAt
         WHERE id = :id
         """
     )
-    suspend fun markItemSynced(id: String, updatedAt: Long): Int
+    suspend fun markItemSynced(
+        id: String,
+        serverUpdatedAt: Long,
+        remoteUid: String?,
+        remoteHref: String?,
+        remoteEtag: String?,
+        remoteLastModifiedAt: Long?,
+        lastSyncedAt: Long
+    ): Int
 
     @Transaction
     suspend fun replaceAll(items: List<ShoppingItemEntity>) {
@@ -134,9 +148,18 @@ interface ShoppingItemDao {
     }
 
     @Transaction
-    suspend fun markItemsSynced(items: Map<String, Long>) {
-        items.forEach { (id, updatedAt) ->
-            markItemSynced(id = id, updatedAt = updatedAt)
+    suspend fun markItemsSynced(items: Map<String, ShoppingItemSyncResult>) {
+        items.forEach { (id, result) ->
+            val rowsAffected = markItemSynced(
+                id = id,
+                serverUpdatedAt = result.serverUpdatedAt,
+                remoteUid = result.remoteUid,
+                remoteHref = result.remoteHref,
+                remoteEtag = result.remoteEtag,
+                remoteLastModifiedAt = result.remoteLastModifiedAt,
+                lastSyncedAt = result.lastSyncedAt
+            )
+            check(rowsAffected == 1) { "Expected to sync item $id but no local row was updated" }
         }
     }
 }

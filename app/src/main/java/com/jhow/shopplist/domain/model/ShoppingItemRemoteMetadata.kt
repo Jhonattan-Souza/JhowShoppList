@@ -1,12 +1,9 @@
 package com.jhow.shopplist.domain.model
 
-data class ShoppingItemSyncResult(
-    val id: String,
-    val serverUpdatedAt: Long,
+data class ShoppingItemRemoteMetadata(
     val remoteUid: String? = null,
     val remoteHref: String? = null,
     val remoteEtag: String? = null,
     val remoteLastModifiedAt: Long? = null,
-    val lastSyncedAt: Long = serverUpdatedAt,
-    val deletedRemotely: Boolean = false
+    val lastSyncedAt: Long? = null
 )
