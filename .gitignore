@@ -33,3 +33,4 @@ render.experimental.xml
 google-services.json
 *.hprof
 .agents
+skills-lock.json

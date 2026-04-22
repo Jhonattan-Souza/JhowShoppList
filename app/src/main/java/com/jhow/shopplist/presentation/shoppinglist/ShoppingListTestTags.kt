@@ -15,9 +15,9 @@ object ShoppingListTestTags {
 
     fun purchasedItem(id: String): String = "purchased_item_$id"
 
-    fun deletePendingItem(id: String): String = "delete_pending_item_$id"
+    fun swipePendingItem(id: String): String = "swipe_pending_item_$id"
 
-    fun deletePurchasedItem(id: String): String = "delete_purchased_item_$id"
+    fun swipePurchasedItem(id: String): String = "swipe_purchased_item_$id"
 
     fun suggestionItem(name: String): String = "suggestion_item_$name"
 }

@@ -10,7 +10,7 @@
     <string name="empty_purchased_title">No purchase history</string>
     <string name="delete_item_title">Delete item</string>
     <string name="delete_item_message">Remove %1$s from the local list and queue the deletion for sync?</string>
+    <string name="delete_item_swipe_label">Delete item</string>
     <string name="delete_item_confirm">Delete</string>
     <string name="delete_item_cancel">Cancel</string>
-    <string name="delete_item_content_description">Delete %1$s</string>
 </resources>
