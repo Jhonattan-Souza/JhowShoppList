@@ -42,7 +42,8 @@ class DataStoreCalDavConfigRepository(
             } ?: CalDavPendingAction.None,
             lastSyncAt = prefs[LAST_SYNC_AT],
             lastResolvedCollectionUrl = prefs[LAST_RESOLVED_COLLECTION_URL],
-            createListRequested = prefs[CREATE_LIST_REQUESTED] ?: false
+            createListRequested = prefs[CREATE_LIST_REQUESTED] ?: false,
+            hasStoredPassword = passwordStorage.hasSavedPassword()
         )
     }
 
