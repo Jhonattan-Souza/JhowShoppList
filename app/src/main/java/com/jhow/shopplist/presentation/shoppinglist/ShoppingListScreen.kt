@@ -136,7 +136,7 @@ fun ShoppingListScreen(
     onSyncMenuDismissed: () -> Unit,
     onSyncSettingsRequested: () -> Unit,
     onSyncSettingsDismissed: () -> Unit,
-    onSyncSettingsSaved: (ShoppingListSyncSettingsUiState) -> Unit,
+    onSyncSettingsSaved: () -> Unit,
     onSyncNowRequested: () -> Unit,
     onConfirmCreateMissingList: () -> Unit,
     modifier: Modifier = Modifier
@@ -354,17 +354,7 @@ fun ShoppingListScreen(
                     }
 
                     Button(
-                        onClick = {
-                            onSyncSettingsSaved(
-                                settings.copy(
-                                    enabled = enabled,
-                                    serverUrl = serverUrl,
-                                    username = username,
-                                    password = password,
-                                    listName = listName
-                                )
-                            )
-                        },
+                        onClick = onSyncSettingsSaved,
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag(ShoppingListTestTags.SYNC_SAVE_BUTTON)
