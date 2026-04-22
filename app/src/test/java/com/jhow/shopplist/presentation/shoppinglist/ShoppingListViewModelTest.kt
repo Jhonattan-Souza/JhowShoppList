@@ -1,16 +1,23 @@
 package com.jhow.shopplist.presentation.shoppinglist
 
 import app.cash.turbine.test
+import com.jhow.shopplist.domain.model.CalDavPendingAction
+import com.jhow.shopplist.domain.model.CalDavSyncState
 import com.jhow.shopplist.domain.model.ShoppingItem
 import com.jhow.shopplist.domain.model.SyncStatus
 import com.jhow.shopplist.domain.usecase.AddOrReclaimShoppingItemUseCase
+import com.jhow.shopplist.domain.usecase.ClearCalDavPendingActionUseCase
+import com.jhow.shopplist.domain.usecase.ConfirmCreateCalDavListUseCase
 import com.jhow.shopplist.domain.usecase.DeleteShoppingItemUseCase
+import com.jhow.shopplist.domain.usecase.GetCalDavSyncConfigUseCase
 import com.jhow.shopplist.domain.usecase.MarkPurchasedItemPendingUseCase
 import com.jhow.shopplist.domain.usecase.MarkSelectedItemsPurchasedUseCase
 import com.jhow.shopplist.domain.usecase.ObserveItemNamesUseCase
 import com.jhow.shopplist.domain.usecase.ObservePendingItemsUseCase
 import com.jhow.shopplist.domain.usecase.ObservePurchasedItemsUseCase
 import com.jhow.shopplist.domain.usecase.RequestShoppingSyncUseCase
+import com.jhow.shopplist.domain.usecase.SaveCalDavSyncConfigUseCase
+import com.jhow.shopplist.testing.FakeCalDavConfigRepository
 import com.jhow.shopplist.testing.FakeShoppingListRepository
 import com.jhow.shopplist.testing.FakeShoppingSyncScheduler
 import com.jhow.shopplist.testing.MainDispatcherRule
@@ -29,12 +36,14 @@ class ShoppingListViewModelTest {
 
     private lateinit var repository: FakeShoppingListRepository
     private lateinit var syncScheduler: FakeShoppingSyncScheduler
+    private lateinit var configRepository: FakeCalDavConfigRepository
     private lateinit var viewModel: ShoppingListViewModel
 
     @Before
     fun setUp() {
         repository = FakeShoppingListRepository()
         syncScheduler = FakeShoppingSyncScheduler()
+        configRepository = FakeCalDavConfigRepository()
         viewModel = ShoppingListViewModel(
             observePendingItemsUseCase = ObservePendingItemsUseCase(repository),
             observePurchasedItemsUseCase = ObservePurchasedItemsUseCase(repository),
@@ -43,7 +52,11 @@ class ShoppingListViewModelTest {
             deleteShoppingItemUseCase = DeleteShoppingItemUseCase(repository),
             markSelectedItemsPurchasedUseCase = MarkSelectedItemsPurchasedUseCase(repository),
             markPurchasedItemPendingUseCase = MarkPurchasedItemPendingUseCase(repository),
-            requestShoppingSyncUseCase = RequestShoppingSyncUseCase(syncScheduler)
+            requestShoppingSyncUseCase = RequestShoppingSyncUseCase(syncScheduler),
+            getCalDavSyncConfigUseCase = GetCalDavSyncConfigUseCase(configRepository),
+            saveCalDavSyncConfigUseCase = SaveCalDavSyncConfigUseCase(configRepository),
+            confirmCreateCalDavListUseCase = ConfirmCreateCalDavListUseCase(configRepository),
+            clearCalDavPendingActionUseCase = ClearCalDavPendingActionUseCase(configRepository)
         )
     }
 
@@ -289,6 +302,94 @@ class ShoppingListViewModelTest {
             assertEquals(listOf("beans"), state.purchasedItems.map { it.id })
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `opening sync settings shows saved config and saving requests sync`() = runTest {
+        configRepository.seed(
+            enabled = true,
+            serverUrl = "https://dav.example.com",
+            username = "jhow",
+            listName = "Groceries",
+            syncState = CalDavSyncState.Idle
+        )
+        advanceUntilIdle()
+
+        viewModel.onSyncMenuClicked()
+        viewModel.onSyncSettingsRequested()
+        advanceUntilIdle()
+
+        assertEquals(true, viewModel.uiState.value.isSyncSettingsVisible)
+        assertEquals("https://dav.example.com", viewModel.uiState.value.syncSettings.serverUrl)
+
+        viewModel.onSyncSettingsSaved(
+            enabled = true,
+            serverUrl = "https://dav.example.com",
+            username = "jhow",
+            listName = "Groceries",
+            password = "secret"
+        )
+        advanceUntilIdle()
+
+        assertEquals(1, syncScheduler.requestCount)
+    }
+
+    @Test
+    fun `confirming create missing list clears pending action and requests sync`() = runTest {
+        configRepository.seed(
+            enabled = true,
+            serverUrl = "https://dav.example.com",
+            username = "jhow",
+            listName = "Groceries",
+            syncState = CalDavSyncState.UserActionRequired,
+            pendingAction = CalDavPendingAction.CreateMissingList
+        )
+        advanceUntilIdle()
+
+        viewModel.onConfirmCreateMissingList()
+        advanceUntilIdle()
+
+        assertEquals(CalDavPendingAction.None, configRepository.currentConfig.pendingAction)
+        assertEquals(1, syncScheduler.requestCount)
+    }
+
+    @Test
+    fun `clearing pending action updates config without requesting sync`() = runTest {
+        configRepository.seed(
+            enabled = true,
+            serverUrl = "https://dav.example.com",
+            username = "jhow",
+            listName = "Groceries",
+            syncState = CalDavSyncState.UserActionRequired,
+            pendingAction = CalDavPendingAction.CreateMissingList
+        )
+        advanceUntilIdle()
+
+        viewModel.onClearPendingAction()
+        advanceUntilIdle()
+
+        assertEquals(CalDavPendingAction.None, configRepository.currentConfig.pendingAction)
+        assertEquals(0, syncScheduler.requestCount)
+    }
+
+    @Test
+    fun `sync settings projects sync state and pending action from config flow`() = runTest {
+        configRepository.seed(
+            enabled = true,
+            serverUrl = "https://dav.example.com",
+            username = "jhow",
+            listName = "Groceries",
+            syncState = CalDavSyncState.Success,
+            statusMessage = "Last sync succeeded",
+            pendingAction = CalDavPendingAction.None
+        )
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+
+        assertEquals(CalDavSyncState.Success, state.syncSettings.syncState)
+        assertEquals("Last sync succeeded", state.syncSettings.statusMessage)
+        assertEquals(CalDavPendingAction.None, state.syncSettings.pendingAction)
     }
 
     private fun samplePendingItem(

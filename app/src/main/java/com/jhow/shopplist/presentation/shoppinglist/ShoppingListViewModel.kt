@@ -4,13 +4,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jhow.shopplist.core.search.ShoppingSearch
 import com.jhow.shopplist.domain.usecase.AddOrReclaimShoppingItemUseCase
+import com.jhow.shopplist.domain.usecase.ClearCalDavPendingActionUseCase
+import com.jhow.shopplist.domain.usecase.ConfirmCreateCalDavListUseCase
 import com.jhow.shopplist.domain.usecase.DeleteShoppingItemUseCase
+import com.jhow.shopplist.domain.usecase.GetCalDavSyncConfigUseCase
 import com.jhow.shopplist.domain.usecase.MarkPurchasedItemPendingUseCase
 import com.jhow.shopplist.domain.usecase.MarkSelectedItemsPurchasedUseCase
 import com.jhow.shopplist.domain.usecase.ObserveItemNamesUseCase
 import com.jhow.shopplist.domain.usecase.ObservePendingItemsUseCase
 import com.jhow.shopplist.domain.usecase.ObservePurchasedItemsUseCase
 import com.jhow.shopplist.domain.usecase.RequestShoppingSyncUseCase
+import com.jhow.shopplist.domain.usecase.SaveCalDavSyncConfigUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,17 +34,23 @@ class ShoppingListViewModel @Inject constructor(
     private val deleteShoppingItemUseCase: DeleteShoppingItemUseCase,
     private val markSelectedItemsPurchasedUseCase: MarkSelectedItemsPurchasedUseCase,
     private val markPurchasedItemPendingUseCase: MarkPurchasedItemPendingUseCase,
-    private val requestShoppingSyncUseCase: RequestShoppingSyncUseCase
+    private val requestShoppingSyncUseCase: RequestShoppingSyncUseCase,
+    private val getCalDavSyncConfigUseCase: GetCalDavSyncConfigUseCase,
+    private val saveCalDavSyncConfigUseCase: SaveCalDavSyncConfigUseCase,
+    private val confirmCreateCalDavListUseCase: ConfirmCreateCalDavListUseCase,
+    private val clearCalDavPendingActionUseCase: ClearCalDavPendingActionUseCase
 ) : ViewModel() {
 
     private val inputValue = MutableStateFlow("")
     private val selectedIds = MutableStateFlow(emptySet<String>())
     private val itemPendingDeletion = MutableStateFlow<com.jhow.shopplist.domain.model.ShoppingItem?>(null)
+    private val syncMenuExpanded = MutableStateFlow(false)
+    private val syncSettingsVisible = MutableStateFlow(false)
     private val inputWithSuggestions = combine(observeItemNamesUseCase(), inputValue) { allItemNames, currentInput ->
         currentInput to buildSuggestions(allItemNames = allItemNames, currentInput = currentInput)
     }
 
-    val uiState: StateFlow<ShoppingListUiState> = combine(
+    private val shoppingState = combine(
         observePendingItemsUseCase(),
         observePurchasedItemsUseCase(),
         inputWithSuggestions,
@@ -58,6 +68,27 @@ class ShoppingListViewModel @Inject constructor(
             purchasedItems = distinctPurchasedItems,
             selectedIds = currentSelection.intersect(pendingIds),
             itemPendingDeletion = visibleItems.firstOrNull { it.id == pendingDeletion?.id }
+        )
+    }
+
+    val uiState: StateFlow<ShoppingListUiState> = combine(
+        shoppingState,
+        syncMenuExpanded,
+        syncSettingsVisible,
+        getCalDavSyncConfigUseCase()
+    ) { shopping, isMenuExpanded, isSettingsVisible, config ->
+        shopping.copy(
+            isSyncMenuExpanded = isMenuExpanded,
+            isSyncSettingsVisible = isSettingsVisible,
+            syncSettings = ShoppingListSyncSettingsUiState(
+                enabled = config.enabled,
+                serverUrl = config.serverUrl,
+                username = config.username,
+                listName = config.listName,
+                syncState = config.syncState,
+                statusMessage = config.statusMessage,
+                pendingAction = config.pendingAction
+            )
         )
     }.stateIn(
         scope = viewModelScope,
@@ -126,6 +157,57 @@ class ShoppingListViewModel @Inject constructor(
             selectedIds.update { it - item.id }
             itemPendingDeletion.value = null
             requestShoppingSyncUseCase()
+        }
+    }
+
+    fun onSyncMenuClicked() {
+        syncMenuExpanded.value = true
+    }
+
+    fun onSyncMenuDismissed() {
+        syncMenuExpanded.value = false
+    }
+
+    fun onSyncSettingsRequested() {
+        syncMenuExpanded.value = false
+        syncSettingsVisible.value = true
+    }
+
+    fun onSyncSettingsDismissed() {
+        syncSettingsVisible.value = false
+    }
+
+    fun onSyncSettingsSaved(
+        enabled: Boolean,
+        serverUrl: String,
+        username: String,
+        password: String,
+        listName: String
+    ) {
+        viewModelScope.launch {
+            saveCalDavSyncConfigUseCase(enabled, serverUrl, username, listName, password)
+            syncSettingsVisible.value = false
+            requestShoppingSyncUseCase()
+        }
+    }
+
+    fun onSyncNowRequested() {
+        syncMenuExpanded.value = false
+        viewModelScope.launch {
+            requestShoppingSyncUseCase()
+        }
+    }
+
+    fun onConfirmCreateMissingList() {
+        viewModelScope.launch {
+            confirmCreateCalDavListUseCase()
+            requestShoppingSyncUseCase()
+        }
+    }
+
+    fun onClearPendingAction() {
+        viewModelScope.launch {
+            clearCalDavPendingActionUseCase()
         }
     }
 
