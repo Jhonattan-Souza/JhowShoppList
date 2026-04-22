@@ -11,7 +11,7 @@ import com.jhow.shopplist.core.search.ShoppingSearch
 
 @Database(
     entities = [ShoppingItemEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(RoomConverters::class)
@@ -50,6 +50,16 @@ abstract class AppDatabase : RoomDatabase() {
                     ON items(normalizedName, isDeleted)
                     """.trimIndent()
                 )
+            }
+        }
+
+        val MIGRATION_2_3: Migration = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE items ADD COLUMN remoteUid TEXT")
+                db.execSQL("ALTER TABLE items ADD COLUMN remoteHref TEXT")
+                db.execSQL("ALTER TABLE items ADD COLUMN remoteEtag TEXT")
+                db.execSQL("ALTER TABLE items ADD COLUMN remoteLastModifiedAt INTEGER")
+                db.execSQL("ALTER TABLE items ADD COLUMN lastSyncedAt INTEGER")
             }
         }
     }

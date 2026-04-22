@@ -86,7 +86,7 @@ class ShoppingListRepositoryImpl @Inject constructor(
         if (results.isEmpty()) return
         withContext(ioDispatcher) {
             shoppingItemDao.markItemsSynced(
-                items = results.associate { result -> result.id to result.serverUpdatedAt }
+                items = results.associateBy { it.id }
             )
         }
     }

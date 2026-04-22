@@ -6,6 +6,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.jhow.shopplist.core.search.ShoppingSearch
 import com.jhow.shopplist.data.local.db.AppDatabase
 import com.jhow.shopplist.data.local.entity.ShoppingItemEntity
+import com.jhow.shopplist.domain.model.ShoppingItemSyncResult
 import com.jhow.shopplist.domain.model.SyncStatus
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -203,13 +204,65 @@ class ShoppingItemDaoTest {
             )
         )
 
-        dao.markItemsSynced(mapOf("beans" to 101L, "tea" to 102L))
+        dao.markItemsSynced(
+            mapOf(
+                "beans" to ShoppingItemSyncResult(id = "beans", serverUpdatedAt = 101L),
+                "tea" to ShoppingItemSyncResult(id = "tea", serverUpdatedAt = 102L)
+            )
+        )
 
         val items = dao.getAllItems().associateBy { it.id }
         assertEquals(SyncStatus.SYNCED, items.getValue("beans").syncStatus)
         assertEquals(101L, items.getValue("beans").updatedAt)
         assertEquals(SyncStatus.SYNCED, items.getValue("tea").syncStatus)
         assertEquals(102L, items.getValue("tea").updatedAt)
+    }
+
+    @Test
+    fun markItemsSynced_persistsRemoteMetadata() = runBlocking {
+        dao.insertItem(entity(id = "beans", name = "Beans", syncStatus = SyncStatus.PENDING_INSERT))
+
+        dao.markItemsSynced(
+            items = mapOf(
+                "beans" to ShoppingItemSyncResult(
+                    id = "beans",
+                    serverUpdatedAt = 101L,
+                    remoteUid = "uid-beans",
+                    remoteHref = "/dav/lists/groceries/beans.ics",
+                    remoteEtag = "\"etag-1\"",
+                    remoteLastModifiedAt = 202L,
+                    lastSyncedAt = 303L,
+                    deletedRemotely = false
+                )
+            )
+        )
+
+        val item = dao.getAllItems().single()
+        assertEquals("uid-beans", item.remoteUid)
+        assertEquals("/dav/lists/groceries/beans.ics", item.remoteHref)
+        assertEquals("\"etag-1\"", item.remoteEtag)
+        assertEquals(101L, item.updatedAt)
+        assertEquals(202L, item.remoteLastModifiedAt)
+        assertEquals(303L, item.lastSyncedAt)
+    }
+
+    @Test
+    fun markItemsSynced_failsForMissingItem() = runBlocking {
+        var thrown = false
+        try {
+            dao.markItemsSynced(
+                mapOf(
+                    "nonexistent" to ShoppingItemSyncResult(
+                        id = "nonexistent",
+                        serverUpdatedAt = 101L
+                    )
+                )
+            )
+        } catch (e: IllegalStateException) {
+            thrown = true
+            assertTrue(e.message!!.contains("nonexistent"))
+        }
+        assertTrue("Expected IllegalStateException for missing item", thrown)
     }
 
     private fun entity(
