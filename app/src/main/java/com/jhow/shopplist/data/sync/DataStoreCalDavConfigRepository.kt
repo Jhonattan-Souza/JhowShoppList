@@ -40,7 +40,9 @@ class DataStoreCalDavConfigRepository(
             pendingAction = prefs[PENDING_ACTION]?.let {
                 runCatching { CalDavPendingAction.valueOf(it) }.getOrDefault(CalDavPendingAction.None)
             } ?: CalDavPendingAction.None,
-            lastSyncAt = prefs[LAST_SYNC_AT]
+            lastSyncAt = prefs[LAST_SYNC_AT],
+            lastResolvedCollectionUrl = prefs[LAST_RESOLVED_COLLECTION_URL],
+            createListRequested = prefs[CREATE_LIST_REQUESTED] ?: false
         )
     }
 
@@ -63,6 +65,8 @@ class DataStoreCalDavConfigRepository(
                 this[SYNC_STATE] = if (enabled) CalDavSyncState.Idle.name else CalDavSyncState.Disabled.name
                 this[PENDING_ACTION] = CalDavPendingAction.None.name
                 this.remove(STATUS_MESSAGE)
+                this.remove(LAST_RESOLVED_COLLECTION_URL)
+                this[CREATE_LIST_REQUESTED] = false
             }
         }
     }
@@ -85,6 +89,33 @@ class DataStoreCalDavConfigRepository(
 
     override suspend fun getPassword(): String? = passwordStorage.load()
 
+    override suspend fun setCreateListRequested(requested: Boolean) {
+        dataStore.updateData { prefs ->
+            prefs.toMutablePreferences().apply {
+                this[CREATE_LIST_REQUESTED] = requested
+            }
+        }
+    }
+
+    override suspend fun setResolvedCollectionUrl(url: String?) {
+        dataStore.updateData { prefs ->
+            prefs.toMutablePreferences().apply {
+                if (url == null) remove(LAST_RESOLVED_COLLECTION_URL) else this[LAST_RESOLVED_COLLECTION_URL] = url
+            }
+        }
+    }
+
+    override suspend fun confirmCreateList() {
+        dataStore.updateData { prefs ->
+            prefs.toMutablePreferences().apply {
+                this[CREATE_LIST_REQUESTED] = true
+                this[SYNC_STATE] = CalDavSyncState.Idle.name
+                this[PENDING_ACTION] = CalDavPendingAction.None.name
+                remove(STATUS_MESSAGE)
+            }
+        }
+    }
+
     private companion object {
         val ENABLED = booleanPreferencesKey("enabled")
         val SERVER_URL = stringPreferencesKey("server_url")
@@ -94,5 +125,7 @@ class DataStoreCalDavConfigRepository(
         val STATUS_MESSAGE = stringPreferencesKey("status_message")
         val PENDING_ACTION = stringPreferencesKey("pending_action")
         val LAST_SYNC_AT = longPreferencesKey("last_sync_at")
+        val LAST_RESOLVED_COLLECTION_URL = stringPreferencesKey("last_resolved_collection_url")
+        val CREATE_LIST_REQUESTED = booleanPreferencesKey("create_list_requested")
     }
 }

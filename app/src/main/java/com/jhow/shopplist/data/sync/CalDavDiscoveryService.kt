@@ -6,4 +6,11 @@ interface CalDavDiscoveryService {
         username: String,
         password: String
     ): List<CalDavCollectionCandidate>
+
+    suspend fun createTaskCollection(
+        serverUrl: String,
+        username: String,
+        password: String,
+        listName: String
+    ): String
 }

@@ -10,4 +10,11 @@ class NoOpCalDavDiscoveryService @Inject constructor() : CalDavDiscoveryService 
         username: String,
         password: String
     ): List<CalDavCollectionCandidate> = emptyList()
+
+    override suspend fun createTaskCollection(
+        serverUrl: String,
+        username: String,
+        password: String,
+        listName: String
+    ): String = "$serverUrl/$listName/"
 }
