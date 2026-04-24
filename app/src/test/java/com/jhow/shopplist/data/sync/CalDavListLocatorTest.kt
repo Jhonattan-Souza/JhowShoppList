@@ -1,5 +1,6 @@
 package com.jhow.shopplist.data.sync
 
+import com.jhow.shopplist.domain.model.RemoteShoppingItemSnapshot
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -69,5 +70,12 @@ class CalDavListLocatorTest {
             password: String,
             listName: String
         ): String = "$serverUrl/$listName/"
+
+        override suspend fun fetchTaskItems(
+            serverUrl: String,
+            username: String,
+            password: String,
+            collectionHref: String
+        ): List<RemoteShoppingItemSnapshot> = emptyList()
     }
 }

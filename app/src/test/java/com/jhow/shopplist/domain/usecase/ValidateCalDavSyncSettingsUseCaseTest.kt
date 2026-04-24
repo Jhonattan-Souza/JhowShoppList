@@ -5,14 +5,23 @@ import com.jhow.shopplist.data.sync.CalDavAuthenticationException
 import com.jhow.shopplist.data.sync.CalDavDiscoveryService
 import com.jhow.shopplist.data.sync.CalDavListLocator
 import com.jhow.shopplist.domain.model.CalDavValidationResult
+import com.jhow.shopplist.domain.model.RemoteShoppingItemSnapshot
 import com.jhow.shopplist.testing.FakeCalDavConfigRepository
 import java.util.concurrent.CancellationException
+import java.util.concurrent.Executors
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.ExecutorCoroutineDispatcher
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ValidateCalDavSyncSettingsUseCaseTest {
 
     @Test
@@ -34,7 +43,8 @@ class ValidateCalDavSyncSettingsUseCaseTest {
         )
         val useCase = ValidateCalDavSyncSettingsUseCase(
             configRepository = configRepository,
-            listLocator = CalDavListLocator(discoveryService)
+            listLocator = CalDavListLocator(discoveryService),
+            ioDispatcher = UnconfinedTestDispatcher(testScheduler)
         )
 
         val result = useCase(
@@ -56,7 +66,8 @@ class ValidateCalDavSyncSettingsUseCaseTest {
         }
         val useCase = ValidateCalDavSyncSettingsUseCase(
             configRepository = configRepository,
-            listLocator = CalDavListLocator(FakeDiscoveryService(candidates = emptyList()))
+            listLocator = CalDavListLocator(FakeDiscoveryService(candidates = emptyList())),
+            ioDispatcher = UnconfinedTestDispatcher(testScheduler)
         )
 
         val result = useCase(
@@ -78,7 +89,8 @@ class ValidateCalDavSyncSettingsUseCaseTest {
         val discoveryService = FakeDiscoveryService(candidates = emptyList())
         val useCase = ValidateCalDavSyncSettingsUseCase(
             configRepository = configRepository,
-            listLocator = CalDavListLocator(discoveryService)
+            listLocator = CalDavListLocator(discoveryService),
+            ioDispatcher = UnconfinedTestDispatcher(testScheduler)
         )
 
         val result = useCase(
@@ -104,7 +116,8 @@ class ValidateCalDavSyncSettingsUseCaseTest {
         val discoveryService = FakeDiscoveryService(candidates = emptyList())
         val useCase = ValidateCalDavSyncSettingsUseCase(
             configRepository = configRepository,
-            listLocator = CalDavListLocator(discoveryService)
+            listLocator = CalDavListLocator(discoveryService),
+            ioDispatcher = UnconfinedTestDispatcher(testScheduler)
         )
 
         val result = useCase(
@@ -133,7 +146,8 @@ class ValidateCalDavSyncSettingsUseCaseTest {
                         CalDavCollectionCandidate(displayName = "Groceries", href = "/lists/two/")
                     )
                 )
-            )
+            ),
+            ioDispatcher = UnconfinedTestDispatcher(testScheduler)
         )
 
         val result = useCase(
@@ -157,7 +171,8 @@ class ValidateCalDavSyncSettingsUseCaseTest {
         }
         val useCase = ValidateCalDavSyncSettingsUseCase(
             configRepository = configRepository,
-            listLocator = CalDavListLocator(FakeDiscoveryService(throwOnFind = IllegalStateException("boom")))
+            listLocator = CalDavListLocator(FakeDiscoveryService(throwOnFind = IllegalStateException("boom"))),
+            ioDispatcher = UnconfinedTestDispatcher(testScheduler)
         )
 
         val result = useCase(
@@ -183,7 +198,8 @@ class ValidateCalDavSyncSettingsUseCaseTest {
             configRepository = configRepository,
             listLocator = CalDavListLocator(
                 FakeDiscoveryService(throwOnFind = CalDavAuthenticationException())
-            )
+            ),
+            ioDispatcher = UnconfinedTestDispatcher(testScheduler)
         )
 
         val result = useCase(
@@ -201,6 +217,39 @@ class ValidateCalDavSyncSettingsUseCaseTest {
     }
 
     @Test
+    fun `validation runs locator work on injected io dispatcher`() = runTest {
+        val configRepository = FakeCalDavConfigRepository().apply {
+            setStoredPasswordAvailable()
+        }
+        val recorder = ContextRecordingDiscoveryService(
+            candidates = listOf(
+                CalDavCollectionCandidate(displayName = "Groceries", href = "/lists/groceries/")
+            )
+        )
+        val dispatcher = newNamedDispatcher("caldav-validation-io")
+        try {
+            val useCase = ValidateCalDavSyncSettingsUseCase(
+                configRepository = configRepository,
+                listLocator = CalDavListLocator(recorder),
+                ioDispatcher = dispatcher
+            )
+
+            val result = useCase(
+                enabled = true,
+                serverUrl = "https://dav.example.com",
+                username = "jhow",
+                listName = "Groceries",
+                password = ""
+            )
+
+            assertEquals(CalDavValidationResult.Success("/lists/groceries/"), result)
+            assertTrue(recorder.recordedThreadName?.contains("caldav-validation-io") == true)
+        } finally {
+            dispatcher.close()
+        }
+    }
+
+    @Test
     fun `cancellation from locator is rethrown`() = runTest {
         val configRepository = FakeCalDavConfigRepository().apply {
             setStoredPasswordAvailable()
@@ -209,7 +258,8 @@ class ValidateCalDavSyncSettingsUseCaseTest {
             configRepository = configRepository,
             listLocator = CalDavListLocator(
                 FakeDiscoveryService(throwOnFind = CancellationException("cancelled"))
-            )
+            ),
+            ioDispatcher = UnconfinedTestDispatcher(testScheduler)
         )
 
         try {
@@ -285,5 +335,48 @@ class ValidateCalDavSyncSettingsUseCaseTest {
             password: String,
             listName: String
         ): String = error("Not used in validation tests")
+
+        override suspend fun fetchTaskItems(
+            serverUrl: String,
+            username: String,
+            password: String,
+            collectionHref: String
+        ): List<RemoteShoppingItemSnapshot> = emptyList()
+    }
+
+    private class ContextRecordingDiscoveryService(
+        private val candidates: List<CalDavCollectionCandidate>
+    ) : CalDavDiscoveryService {
+        var recordedThreadName: String? = null
+            private set
+
+        override suspend fun findTaskCollections(
+            serverUrl: String,
+            username: String,
+            password: String
+        ): List<CalDavCollectionCandidate> {
+            recordedThreadName = Thread.currentThread().name
+            return candidates
+        }
+
+        override suspend fun createTaskCollection(
+            serverUrl: String,
+            username: String,
+            password: String,
+            listName: String
+        ): String = error("Not used in validation tests")
+
+        override suspend fun fetchTaskItems(
+            serverUrl: String,
+            username: String,
+            password: String,
+            collectionHref: String
+        ): List<RemoteShoppingItemSnapshot> = emptyList()
+    }
+
+    private fun newNamedDispatcher(threadName: String): ExecutorCoroutineDispatcher {
+        return Executors.newSingleThreadExecutor { runnable ->
+            Thread(runnable, threadName)
+        }.asCoroutineDispatcher()
     }
 }

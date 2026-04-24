@@ -3,6 +3,7 @@ package com.jhow.shopplist.data.sync
 import com.jhow.shopplist.domain.model.CalDavPendingAction
 import com.jhow.shopplist.domain.model.CalDavSyncOutcome
 import com.jhow.shopplist.domain.model.CalDavSyncState
+import com.jhow.shopplist.domain.model.RemoteShoppingItemSnapshot
 import com.jhow.shopplist.domain.model.ShoppingItem
 import com.jhow.shopplist.domain.model.ShoppingItemRemoteMetadata
 import com.jhow.shopplist.domain.model.SyncStatus
@@ -38,7 +39,8 @@ class CalDavShoppingSyncGatewayTest {
         val executor = CalDavSyncExecutor(
             repository = repository,
             planner = CalDavSyncPlanner(),
-            mapper = VTodoMapper()
+            mapper = VTodoMapper(),
+            discoveryService = discoveryService
         )
         val gateway = CalDavShoppingSyncGateway(
             configRepository = configRepository,
@@ -75,7 +77,8 @@ class CalDavShoppingSyncGatewayTest {
         val executor = CalDavSyncExecutor(
             repository = FakeShoppingListRepository(),
             planner = CalDavSyncPlanner(),
-            mapper = VTodoMapper()
+            mapper = VTodoMapper(),
+            discoveryService = discoveryService
         )
         val gateway = CalDavShoppingSyncGateway(
             configRepository = configRepository,
@@ -121,7 +124,8 @@ class CalDavShoppingSyncGatewayTest {
         val executor = CalDavSyncExecutor(
             repository = repository,
             planner = CalDavSyncPlanner(),
-            mapper = VTodoMapper()
+            mapper = VTodoMapper(),
+            discoveryService = discoveryService
         )
         val gateway = CalDavShoppingSyncGateway(
             configRepository = configRepository,
@@ -159,7 +163,8 @@ class CalDavShoppingSyncGatewayTest {
         val executor = CalDavSyncExecutor(
             repository = repository,
             planner = CalDavSyncPlanner(),
-            mapper = VTodoMapper()
+            mapper = VTodoMapper(),
+            discoveryService = discoveryService
         )
         val gateway = CalDavShoppingSyncGateway(
             configRepository = configRepository,
@@ -196,7 +201,8 @@ class CalDavShoppingSyncGatewayTest {
         val executor = CalDavSyncExecutor(
             repository = FakeShoppingListRepository(),
             planner = CalDavSyncPlanner(),
-            mapper = VTodoMapper()
+            mapper = VTodoMapper(),
+            discoveryService = discoveryService
         )
         val gateway = CalDavShoppingSyncGateway(
             configRepository = configRepository,
@@ -235,7 +241,8 @@ class CalDavShoppingSyncGatewayTest {
         val executor = CalDavSyncExecutor(
             repository = FakeShoppingListRepository(),
             planner = CalDavSyncPlanner(),
-            mapper = VTodoMapper()
+            mapper = VTodoMapper(),
+            discoveryService = discoveryService
         )
         val gateway = CalDavShoppingSyncGateway(
             configRepository = configRepository,
@@ -272,7 +279,8 @@ class CalDavShoppingSyncGatewayTest {
         val executor = CalDavSyncExecutor(
             repository = FakeShoppingListRepository(),
             planner = CalDavSyncPlanner(),
-            mapper = VTodoMapper()
+            mapper = VTodoMapper(),
+            discoveryService = discoveryService
         )
         val gateway = CalDavShoppingSyncGateway(
             configRepository = configRepository,
@@ -320,6 +328,13 @@ class CalDavShoppingSyncGatewayTest {
             if (throwOnCreate) throw RuntimeException("create failed")
             return "$serverUrl/$listName"
         }
+
+        override suspend fun fetchTaskItems(
+            serverUrl: String,
+            username: String,
+            password: String,
+            collectionHref: String
+        ): List<RemoteShoppingItemSnapshot> = emptyList()
     }
 
     private fun sampleItem(

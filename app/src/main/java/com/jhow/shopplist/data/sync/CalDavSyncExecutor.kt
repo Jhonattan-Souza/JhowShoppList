@@ -9,21 +9,31 @@ import javax.inject.Inject
 class CalDavSyncExecutor @Inject constructor(
     private val repository: ShoppingListRepository,
     private val planner: CalDavSyncPlanner,
-    private val mapper: VTodoMapper
+    private val mapper: VTodoMapper,
+    private val discoveryService: CalDavDiscoveryService
 ) {
-    suspend fun execute(collectionHref: String): CalDavSyncOutcome {
+    suspend fun execute(
+        serverUrl: String,
+        username: String,
+        password: String,
+        collectionHref: String
+    ): CalDavSyncOutcome {
         val localItems = repository.getAllItems()
-        // TODO: Pull remote VTODOs when transport is implemented.
-        // For now, reconcile against an empty remote set so only local pushes apply.
-        val plan = planner.plan(localItems, emptyList())
+        val remoteItems = discoveryService.fetchTaskItems(
+            serverUrl = serverUrl,
+            username = username,
+            password = password,
+            collectionHref = collectionHref
+        )
+        val plan = planner.plan(localItems, remoteItems)
 
         if (plan.itemsToImport.isNotEmpty()) {
             repository.importRemoteItems(plan.itemsToImport)
         }
 
-        // TODO: applyRemoteDeletes when real remote transport is implemented.
-        // Disabled for now because the stubbed empty remote set would
-        // incorrectly delete every locally-synced item.
+        if (plan.remoteUidsToDeleteLocally.isNotEmpty()) {
+            repository.applyRemoteDeletes(plan.remoteUidsToDeleteLocally)
+        }
 
         val now = System.currentTimeMillis()
         val syncedResults = plan.itemsToPush.map { item ->
