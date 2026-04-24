@@ -1,8 +1,11 @@
 package com.jhow.shopplist.presentation.shoppinglist
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,7 +27,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -124,6 +127,7 @@ class ShoppingListSyncCallbacks(
 private data class ShoppingItemRowVisuals(
     val leadingIcon: androidx.compose.ui.graphics.vector.ImageVector,
     val containerColor: androidx.compose.ui.graphics.Color,
+    val contentColor: androidx.compose.ui.graphics.Color,
     val textDecoration: TextDecoration? = null,
     val rowAlpha: Float = 1f
 )
@@ -139,6 +143,39 @@ private data class ShoppingListContentLayout(
     val innerPadding: PaddingValues,
     val bulkFabBottomClearance: Dp
 )
+
+internal enum class ShoppingListColorRole {
+    SecondaryContainer,
+    OnSecondaryContainer,
+    SurfaceContainerLow,
+    OnSurface
+}
+
+internal data class PendingItemRowColorRoles(
+    val container: ShoppingListColorRole,
+    val content: ShoppingListColorRole
+)
+
+internal fun pendingItemRowColorRoles(isSelected: Boolean): PendingItemRowColorRoles =
+    if (isSelected) {
+        PendingItemRowColorRoles(
+            container = ShoppingListColorRole.SecondaryContainer,
+            content = ShoppingListColorRole.OnSecondaryContainer
+        )
+    } else {
+        PendingItemRowColorRoles(
+            container = ShoppingListColorRole.SurfaceContainerLow,
+            content = ShoppingListColorRole.OnSurface
+        )
+    }
+
+@Composable
+private fun ShoppingListColorRole.resolve() = when (this) {
+    ShoppingListColorRole.SecondaryContainer -> MaterialTheme.colorScheme.secondaryContainer
+    ShoppingListColorRole.OnSecondaryContainer -> MaterialTheme.colorScheme.onSecondaryContainer
+    ShoppingListColorRole.SurfaceContainerLow -> MaterialTheme.colorScheme.surfaceContainerLow
+    ShoppingListColorRole.OnSurface -> MaterialTheme.colorScheme.onSurface
+}
 
 @Composable
 fun ShoppingListRoute(
@@ -572,6 +609,7 @@ private fun ShoppingInputField(
             .testTag(ShoppingListTestTags.INPUT_FIELD),
         label = { Text(text = stringResource(R.string.add_item_label)) },
         placeholder = { Text(text = stringResource(R.string.add_item_placeholder)) },
+        shape = CircleShape,
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
         keyboardActions = KeyboardActions(
@@ -601,7 +639,7 @@ private fun ShoppingSuggestionsList(
                 .padding(top = 8.dp)
                 .heightIn(max = 176.dp)
                 .testTag(ShoppingListTestTags.SUGGESTION_LIST),
-            shape = RoundedCornerShape(20.dp),
+            shape = CircleShape,
             color = MaterialTheme.colorScheme.surfaceContainerLow
         ) {
             LazyColumn(reverseLayout = true) {
@@ -645,7 +683,8 @@ private fun BulkPurchaseFab(
     ) {
         FloatingActionButton(
             onClick = onClick,
-            modifier = Modifier.testTag(ShoppingListTestTags.PURCHASE_SELECTED_FAB)
+            modifier = Modifier.testTag(ShoppingListTestTags.PURCHASE_SELECTED_FAB),
+            shape = CircleShape
         ) {
             Icon(
                 imageVector = Icons.Rounded.Check,
@@ -731,7 +770,8 @@ private fun androidx.compose.foundation.lazy.LazyListScope.pendingItemsSection(
             isSelected = item.id in selectedIds,
             onClick = { itemCallbacks.onPendingItemClick(item.id) },
             onDeleteRequested = { itemCallbacks.onDeleteItemRequested(item) },
-            swipeResetTrigger = swipeResetTrigger
+            swipeResetTrigger = swipeResetTrigger,
+            modifier = Modifier.animateItem()
         )
     }
 }
@@ -759,7 +799,8 @@ private fun androidx.compose.foundation.lazy.LazyListScope.purchasedItemsSection
             item = item,
             onClick = { itemCallbacks.onPurchasedItemClick(item.id) },
             onDeleteRequested = { itemCallbacks.onDeleteItemRequested(item) },
-            swipeResetTrigger = swipeResetTrigger
+            swipeResetTrigger = swipeResetTrigger,
+            modifier = Modifier.animateItem()
         )
     }
 }
@@ -811,7 +852,7 @@ private fun EmptyStateCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(CircleShape)
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .padding(20.dp)
     ) {
@@ -832,17 +873,24 @@ private fun PendingItemRow(
     swipeResetTrigger: String,
     modifier: Modifier = Modifier
 ) {
-    val containerColor = if (isSelected) {
-        MaterialTheme.colorScheme.secondaryContainer
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerLow
-    }
+    val colorRoles = pendingItemRowColorRoles(isSelected)
+    val containerColor by animateColorAsState(
+        targetValue = colorRoles.container.resolve(),
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "pendingRowContainerColor"
+    )
+    val contentColor by animateColorAsState(
+        targetValue = colorRoles.content.resolve(),
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "pendingRowContentColor"
+    )
 
     ShoppingItemRow(
         name = item.name,
         visuals = ShoppingItemRowVisuals(
             leadingIcon = if (isSelected) Icons.Rounded.Check else Icons.Rounded.RadioButtonUnchecked,
-            containerColor = containerColor
+            containerColor = containerColor,
+            contentColor = contentColor
         ),
         interactions = ShoppingItemRowInteractions(
             onClick = onClick,
@@ -870,6 +918,7 @@ private fun PurchasedItemRow(
         visuals = ShoppingItemRowVisuals(
             leadingIcon = Icons.Rounded.History,
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            contentColor = MaterialTheme.colorScheme.onSurface,
             textDecoration = TextDecoration.LineThrough,
             rowAlpha = 0.6f
         ),
@@ -925,7 +974,7 @@ private fun ShoppingItemRow(
         Row(
             modifier = modifier
                 .alpha(visuals.rowAlpha)
-                .clip(RoundedCornerShape(18.dp))
+                .clip(CircleShape)
                 .background(visuals.containerColor)
                 .heightIn(min = 56.dp)
                 .padding(horizontal = 16.dp)
@@ -935,6 +984,7 @@ private fun ShoppingItemRow(
             Icon(
                 imageVector = visuals.leadingIcon,
                 contentDescription = null,
+                tint = visuals.contentColor,
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
@@ -943,6 +993,7 @@ private fun ShoppingItemRow(
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                color = visuals.contentColor,
                 textDecoration = visuals.textDecoration,
                 modifier = Modifier
                     .weight(1f)
@@ -961,7 +1012,7 @@ private fun SwipeDeleteBackground(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .clip(CircleShape)
             .background(
                 if (isActive) MaterialTheme.colorScheme.errorContainer
                 else MaterialTheme.colorScheme.surfaceContainerHighest
