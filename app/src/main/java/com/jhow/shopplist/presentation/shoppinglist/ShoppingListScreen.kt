@@ -28,6 +28,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -143,6 +145,8 @@ private data class ShoppingListContentLayout(
     val innerPadding: PaddingValues,
     val bulkFabBottomClearance: Dp
 )
+
+internal val shoppingListWideSurfaceShape: Shape = RoundedCornerShape(percent = 50)
 
 internal enum class ShoppingListColorRole {
     SecondaryContainer,
@@ -609,7 +613,7 @@ private fun ShoppingInputField(
             .testTag(ShoppingListTestTags.INPUT_FIELD),
         label = { Text(text = stringResource(R.string.add_item_label)) },
         placeholder = { Text(text = stringResource(R.string.add_item_placeholder)) },
-        shape = CircleShape,
+        shape = shoppingListWideSurfaceShape,
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
         keyboardActions = KeyboardActions(
@@ -639,7 +643,7 @@ private fun ShoppingSuggestionsList(
                 .padding(top = 8.dp)
                 .heightIn(max = 176.dp)
                 .testTag(ShoppingListTestTags.SUGGESTION_LIST),
-            shape = CircleShape,
+            shape = shoppingListWideSurfaceShape,
             color = MaterialTheme.colorScheme.surfaceContainerLow
         ) {
             LazyColumn(reverseLayout = true) {
@@ -852,7 +856,7 @@ private fun EmptyStateCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(CircleShape)
+            .clip(shoppingListWideSurfaceShape)
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .padding(20.dp)
     ) {
@@ -974,7 +978,7 @@ private fun ShoppingItemRow(
         Row(
             modifier = modifier
                 .alpha(visuals.rowAlpha)
-                .clip(CircleShape)
+                .clip(shoppingListWideSurfaceShape)
                 .background(visuals.containerColor)
                 .heightIn(min = 56.dp)
                 .padding(horizontal = 16.dp)
@@ -1012,7 +1016,7 @@ private fun SwipeDeleteBackground(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(CircleShape)
+            .clip(shoppingListWideSurfaceShape)
             .background(
                 if (isActive) MaterialTheme.colorScheme.errorContainer
                 else MaterialTheme.colorScheme.surfaceContainerHighest
