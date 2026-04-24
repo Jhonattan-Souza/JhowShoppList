@@ -122,6 +122,12 @@ android {
     }
 }
 
+afterEvaluate {
+    tasks.named("lintDebug") {
+        dependsOn("detekt")
+    }
+}
+
 tasks.matching { task ->
     task.name in setOf("assembleRelease", "bundleRelease", "packageRelease", "installRelease")
 }.configureEach {
