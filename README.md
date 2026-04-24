@@ -54,10 +54,18 @@ Android shopping list app built with Kotlin, Jetpack Compose, Room, Hilt, Corout
 
 ## Release signing
 
-- Copy `keystore.properties.example` to `keystore.properties` and fill in your release keystore values, or export the matching `JHOW_SHOPPLIST_RELEASE_*` environment variables.
+- Prefer exporting the matching `JHOW_SHOPPLIST_RELEASE_*` environment variables for release signing.
+- If you copy `keystore.properties.example` to `keystore.properties`, keep it local only, store the keystore outside this repository, and delete the file before sharing or archiving the repository directory.
 - `scripts/deploy-release.sh` refuses to run unless all release signing values are present.
+- `./gradlew assembleRelease` can be used without signing secrets for local release-build verification; signed release deployment still requires release signing values.
 - Use a dedicated release keystore for `com.jhow.shopplist`; do not sign the production app with the debug keystore.
 - `./scripts/backup-release-keystore.sh DESTINATION_DIR` creates a timestamped backup containing both the release keystore and `keystore.properties`.
+
+## Open-source safety
+
+- Do not publish `keystore.properties`, `local.properties`, `google-services.json`, keystores, certificates, `.env` files, APKs, AABs, build outputs, IDE state, or generated agent/session files.
+- `android:allowBackup` is disabled and backup rules exclude app databases, shared preferences, files, and external files so shopping-list and sync data is not exported by Android backup mechanisms.
+- The debug-only adb receiver can reset, seed, sync, and dump local app state; do not distribute debug builds to end users.
 
 ## adb validation hooks
 

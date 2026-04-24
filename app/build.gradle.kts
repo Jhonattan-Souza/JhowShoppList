@@ -132,11 +132,22 @@ afterEvaluate {
 }
 
 tasks.matching { task ->
-    task.name in setOf("assembleRelease", "bundleRelease", "packageRelease", "installRelease")
+    task.name in setOf("bundleRelease", "installRelease")
 }.configureEach {
     doFirst {
         check(hasReleaseSigningConfig) {
             "Release signing is not configured. Set releaseStoreFile, releaseStorePassword, releaseKeyAlias, and releaseKeyPassword in keystore.properties or the matching JHOW_SHOPPLIST_RELEASE_* environment variables."
+        }
+    }
+}
+
+tasks.matching { task -> task.name == "assembleRelease" }.configureEach {
+    doLast {
+        if (!hasReleaseSigningConfig) {
+            logger.warn(
+                "assembleRelease completed without release signing. " +
+                    "The generated release APK is unsigned and must not be distributed."
+            )
         }
     }
 }
