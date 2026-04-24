@@ -38,9 +38,9 @@ private val LightColorScheme = lightColorScheme(
     outline = Slate
 )
 
-internal fun lightColorScheme() = LightColorScheme
+internal fun lightAppColorScheme() = LightColorScheme
 
-internal fun darkColorScheme() = DarkColorScheme
+internal fun darkAppColorScheme() = DarkColorScheme
 
 @Composable
 fun JhowShoppListTheme(
@@ -48,7 +48,7 @@ fun JhowShoppListTheme(
     content: @Composable () -> Unit
 ) {
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
+        colorScheme = if (darkTheme) darkAppColorScheme() else lightAppColorScheme(),
         typography = Typography,
         content = content
     )
