@@ -13,21 +13,22 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class Dav4jvmCalDavDiscoveryDeviceTest {
-    private lateinit var server: MockWebServer
+    private var server: MockWebServer? = null
 
     @Before
     fun setUp() {
-        server = MockWebServer()
-        server.start()
+        server = MockWebServer().apply { start() }
     }
 
     @After
     fun tearDown() {
-        server.shutdown()
+        server?.shutdown()
     }
 
     @Test
     fun findTaskCollections_usesMockServerInsteadOfHostCalDav() = runBlocking {
+        val server = checkNotNull(server)
+
         server.enqueue(
             MockResponse()
                 .setResponseCode(207)
