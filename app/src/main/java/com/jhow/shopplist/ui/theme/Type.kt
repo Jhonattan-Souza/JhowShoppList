@@ -4,48 +4,63 @@ import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.googlefonts.Font
+import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.unit.sp
+import com.jhow.shopplist.R
 
-private val AppFontFamily = FontFamily.SansSerif
+private val provider = GoogleFont.Provider(
+    providerAuthority = "com.google.android.gms.fonts",
+    providerPackage = "com.google.android.gms",
+    certificates = R.array.com_google_android_gms_fonts_certs
+)
+
+private val nunitoFont = GoogleFont("Nunito")
+
+private val NunitoFontFamily = FontFamily(
+    Font(googleFont = nunitoFont, fontProvider = provider)
+)
+
+fun appFontFamily(): FontFamily = NunitoFontFamily
 
 val Typography = Typography(
     headlineSmall = TextStyle(
-        fontFamily = AppFontFamily,
+        fontFamily = NunitoFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 28.sp,
         lineHeight = 32.sp,
         letterSpacing = (-0.5).sp
     ),
     titleMedium = TextStyle(
-        fontFamily = AppFontFamily,
+        fontFamily = NunitoFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 18.sp,
         lineHeight = 24.sp,
         letterSpacing = 0.sp
     ),
     titleSmall = TextStyle(
-        fontFamily = AppFontFamily,
+        fontFamily = NunitoFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 16.sp,
         lineHeight = 22.sp,
         letterSpacing = 0.sp
     ),
     bodyLarge = TextStyle(
-        fontFamily = AppFontFamily,
+        fontFamily = NunitoFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         lineHeight = 24.sp,
         letterSpacing = 0.5.sp
     ),
     bodyMedium = TextStyle(
-        fontFamily = AppFontFamily,
+        fontFamily = NunitoFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
         lineHeight = 20.sp,
         letterSpacing = 0.2.sp
     ),
     bodySmall = TextStyle(
-        fontFamily = AppFontFamily,
+        fontFamily = NunitoFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
         lineHeight = 16.sp,
