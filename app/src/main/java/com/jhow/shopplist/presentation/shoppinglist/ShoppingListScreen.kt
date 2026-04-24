@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -37,7 +36,6 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
-import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -64,7 +62,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -94,34 +91,98 @@ import com.jhow.shopplist.domain.model.CalDavPendingAction
 import com.jhow.shopplist.domain.model.CalDavSyncState
 import com.jhow.shopplist.domain.model.ShoppingItem
 
+class ShoppingListInputCallbacks(
+    val onValueChange: (String) -> Unit = {},
+    val onAddItem: () -> Unit = {},
+    val onSuggestionSelected: (String) -> Unit = {}
+)
+
+class ShoppingListItemCallbacks(
+    val onPendingItemClick: (String) -> Unit = {},
+    val onPurchasedItemClick: (String) -> Unit = {},
+    val onPurchaseSelectedItems: () -> Unit = {},
+    val onDeleteItemRequested: (ShoppingItem) -> Unit = {},
+    val onDeleteItemDismissed: () -> Unit = {},
+    val onDeleteItemConfirmed: () -> Unit = {}
+)
+
+class ShoppingListSyncCallbacks(
+    val onSyncMenuClicked: () -> Unit = {},
+    val onSyncMenuDismissed: () -> Unit = {},
+    val onSyncSettingsRequested: () -> Unit = {},
+    val onSyncSettingsDismissed: () -> Unit = {},
+    val onSyncSettingsSaved: () -> Unit = {},
+    val onSyncNowRequested: () -> Unit = {},
+    val onConfirmCreateMissingList: () -> Unit = {},
+    val onSyncEnabledChanged: (Boolean) -> Unit = {},
+    val onSyncServerUrlChanged: (String) -> Unit = {},
+    val onSyncUsernameChanged: (String) -> Unit = {},
+    val onSyncPasswordChanged: (String) -> Unit = {},
+    val onSyncListNameChanged: (String) -> Unit = {}
+)
+
+private data class ShoppingItemRowVisuals(
+    val leadingIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    val containerColor: androidx.compose.ui.graphics.Color,
+    val textDecoration: TextDecoration? = null,
+    val rowAlpha: Float = 1f
+)
+
+private data class ShoppingItemRowInteractions(
+    val onClick: () -> Unit,
+    val onDeleteRequested: () -> Unit,
+    val swipeTag: String,
+    val swipeResetTrigger: String
+)
+
+private data class ShoppingListContentLayout(
+    val innerPadding: PaddingValues,
+    val bulkFabBottomClearance: Dp
+)
+
 @Composable
 fun ShoppingListRoute(
     viewModel: ShoppingListViewModel = hiltViewModel()
 ) {
     val uiState = viewModel.uiState.collectAsStateWithLifecycle()
+    val inputCallbacks = remember(viewModel) {
+        ShoppingListInputCallbacks(
+            onValueChange = viewModel::onInputValueChange,
+            onAddItem = viewModel::onAddItem,
+            onSuggestionSelected = viewModel::onSuggestionSelected
+        )
+    }
+    val itemCallbacks = remember(viewModel) {
+        ShoppingListItemCallbacks(
+            onPendingItemClick = viewModel::onPendingItemClicked,
+            onPurchasedItemClick = viewModel::onPurchasedItemClicked,
+            onPurchaseSelectedItems = viewModel::onPurchaseSelectedItems,
+            onDeleteItemRequested = viewModel::onDeleteItemRequested,
+            onDeleteItemDismissed = viewModel::onDeleteItemDismissed,
+            onDeleteItemConfirmed = viewModel::onDeleteItemConfirmed
+        )
+    }
+    val syncCallbacks = remember(viewModel) {
+        ShoppingListSyncCallbacks(
+            onSyncMenuClicked = viewModel::onSyncMenuClicked,
+            onSyncMenuDismissed = viewModel::onSyncMenuDismissed,
+            onSyncSettingsRequested = viewModel::onSyncSettingsRequested,
+            onSyncSettingsDismissed = viewModel::onSyncSettingsDismissed,
+            onSyncSettingsSaved = viewModel::onSyncSettingsSaved,
+            onSyncNowRequested = viewModel::onSyncNowRequested,
+            onConfirmCreateMissingList = viewModel::onConfirmCreateMissingList,
+            onSyncEnabledChanged = viewModel::onSyncEnabledChanged,
+            onSyncServerUrlChanged = viewModel::onSyncServerUrlChanged,
+            onSyncUsernameChanged = viewModel::onSyncUsernameChanged,
+            onSyncPasswordChanged = viewModel::onSyncPasswordChanged,
+            onSyncListNameChanged = viewModel::onSyncListNameChanged
+        )
+    }
     ShoppingListScreen(
         uiState = uiState.value,
-        onInputValueChange = viewModel::onInputValueChange,
-        onAddItem = viewModel::onAddItem,
-        onSuggestionSelected = viewModel::onSuggestionSelected,
-        onPendingItemClick = viewModel::onPendingItemClicked,
-        onPurchasedItemClick = viewModel::onPurchasedItemClicked,
-        onPurchaseSelectedItems = viewModel::onPurchaseSelectedItems,
-        onDeleteItemRequested = viewModel::onDeleteItemRequested,
-        onDeleteItemDismissed = viewModel::onDeleteItemDismissed,
-        onDeleteItemConfirmed = viewModel::onDeleteItemConfirmed,
-        onSyncMenuClicked = viewModel::onSyncMenuClicked,
-        onSyncMenuDismissed = viewModel::onSyncMenuDismissed,
-        onSyncSettingsRequested = viewModel::onSyncSettingsRequested,
-        onSyncSettingsDismissed = viewModel::onSyncSettingsDismissed,
-        onSyncSettingsSaved = viewModel::onSyncSettingsSaved,
-        onSyncNowRequested = viewModel::onSyncNowRequested,
-        onConfirmCreateMissingList = viewModel::onConfirmCreateMissingList,
-        onSyncEnabledChanged = viewModel::onSyncEnabledChanged,
-        onSyncServerUrlChanged = viewModel::onSyncServerUrlChanged,
-        onSyncUsernameChanged = viewModel::onSyncUsernameChanged,
-        onSyncPasswordChanged = viewModel::onSyncPasswordChanged,
-        onSyncListNameChanged = viewModel::onSyncListNameChanged
+        inputCallbacks = inputCallbacks,
+        itemCallbacks = itemCallbacks,
+        syncCallbacks = syncCallbacks
     )
 }
 
@@ -129,28 +190,10 @@ fun ShoppingListRoute(
 @Composable
 fun ShoppingListScreen(
     uiState: ShoppingListUiState,
-    onInputValueChange: (String) -> Unit,
-    onAddItem: () -> Unit,
-    onSuggestionSelected: (String) -> Unit,
-    onPendingItemClick: (String) -> Unit,
-    onPurchasedItemClick: (String) -> Unit,
-    onPurchaseSelectedItems: () -> Unit,
-    onDeleteItemRequested: (ShoppingItem) -> Unit,
-    onDeleteItemDismissed: () -> Unit,
-    onDeleteItemConfirmed: () -> Unit,
-    onSyncMenuClicked: () -> Unit,
-    onSyncMenuDismissed: () -> Unit,
-    onSyncSettingsRequested: () -> Unit,
-    onSyncSettingsDismissed: () -> Unit,
-    onSyncSettingsSaved: () -> Unit,
-    onSyncNowRequested: () -> Unit,
-    onConfirmCreateMissingList: () -> Unit,
     modifier: Modifier = Modifier,
-    onSyncEnabledChanged: (Boolean) -> Unit = {},
-    onSyncServerUrlChanged: (String) -> Unit = {},
-    onSyncUsernameChanged: (String) -> Unit = {},
-    onSyncPasswordChanged: (String) -> Unit = {},
-    onSyncListNameChanged: (String) -> Unit = {}
+    inputCallbacks: ShoppingListInputCallbacks = ShoppingListInputCallbacks(),
+    itemCallbacks: ShoppingListItemCallbacks = ShoppingListItemCallbacks(),
+    syncCallbacks: ShoppingListSyncCallbacks = ShoppingListSyncCallbacks(),
 ) {
     val focusManager = LocalFocusManager.current
     var inputBarContentHeightPx by remember { mutableIntStateOf(0) }
@@ -169,227 +212,300 @@ fun ShoppingListScreen(
             .testTag(ShoppingListTestTags.SCREEN),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(text = stringResource(R.string.shopping_list_title))
-                },
-                actions = {
-                    Box {
-                        IconButton(
-                            onClick = onSyncMenuClicked,
-                            modifier = Modifier.testTag(ShoppingListTestTags.SYNC_MENU_BUTTON)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.MoreVert,
-                                contentDescription = stringResource(R.string.sync_menu_open)
-                            )
-                        }
-
-                        DropdownMenu(
-                            expanded = uiState.isSyncMenuExpanded,
-                            onDismissRequest = onSyncMenuDismissed
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.sync_now)) },
-                                onClick = onSyncNowRequested,
-                                modifier = Modifier.testTag(ShoppingListTestTags.SYNC_NOW_MENU_ITEM)
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.sync_settings)) },
-                                onClick = onSyncSettingsRequested,
-                                modifier = Modifier.testTag(ShoppingListTestTags.SYNC_SETTINGS_MENU_ITEM)
-                            )
-                        }
-                    }
-                }
+            ShoppingListTopAppBar(
+                isSyncMenuExpanded = uiState.isSyncMenuExpanded,
+                syncCallbacks = syncCallbacks
             )
         },
     ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            ShoppingItemsContent(
-                uiState = uiState,
-                onPendingItemClick = onPendingItemClick,
-                onPurchasedItemClick = onPurchasedItemClick,
-                onDeleteItemRequested = onDeleteItemRequested,
-                modifier = Modifier.fillMaxSize()
-            )
+        ShoppingListScreenContent(
+            uiState = uiState,
+            layout = ShoppingListContentLayout(
+                innerPadding = innerPadding,
+                bulkFabBottomClearance = bulkFabBottomClearance
+            ),
+            inputCallbacks = inputCallbacks,
+            itemCallbacks = itemCallbacks,
+            syncCallbacks = syncCallbacks,
+            onInputBarHeightChanged = { inputBarContentHeightPx = it }
+        )
+    }
+}
 
-            ShoppingInputBar(
-                value = uiState.inputValue,
-                suggestions = uiState.suggestions,
-                onValueChange = onInputValueChange,
-                onDone = onAddItem,
-                onSuggestionSelected = onSuggestionSelected,
-                onContentHeightChanged = { inputBarContentHeightPx = it },
-                modifier = Modifier.align(Alignment.BottomCenter)
-            )
-
-            BulkPurchaseFab(
-                visible = uiState.isBulkActionVisible,
-                onClick = onPurchaseSelectedItems,
-                bottomClearance = bulkFabBottomClearance,
-                modifier = Modifier.align(Alignment.BottomEnd)
-            )
-        }
-
-        DeleteItemDialog(
-            item = uiState.itemPendingDeletion,
-            onDismiss = onDeleteItemDismissed,
-            onConfirm = onDeleteItemConfirmed
+@Composable
+private fun ShoppingListScreenContent(
+    uiState: ShoppingListUiState,
+    layout: ShoppingListContentLayout,
+    inputCallbacks: ShoppingListInputCallbacks,
+    itemCallbacks: ShoppingListItemCallbacks,
+    syncCallbacks: ShoppingListSyncCallbacks,
+    onInputBarHeightChanged: (Int) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(layout.innerPadding)
+    ) {
+        ShoppingItemsContent(
+            uiState = uiState,
+            itemCallbacks = itemCallbacks,
+            modifier = Modifier.fillMaxSize()
         )
 
-        if (uiState.isSyncSettingsVisible) {
-            val settings = uiState.syncSettings
+        ShoppingInputBar(
+            value = uiState.inputValue,
+            suggestions = uiState.suggestions,
+            inputCallbacks = inputCallbacks,
+            onContentHeightChanged = onInputBarHeightChanged,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
 
-            ModalBottomSheet(
-                onDismissRequest = onSyncSettingsDismissed,
-                modifier = Modifier.testTag(ShoppingListTestTags.SYNC_SETTINGS_SHEET)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp)
-                        .testTag(ShoppingListTestTags.SYNC_SETTINGS_SHEET_CONTENT)
+        BulkPurchaseFab(
+            visible = uiState.isBulkActionVisible,
+            onClick = itemCallbacks.onPurchaseSelectedItems,
+            bottomClearance = layout.bulkFabBottomClearance,
+            modifier = Modifier.align(Alignment.BottomEnd)
+        )
+    }
+
+    DeleteItemDialog(
+        item = uiState.itemPendingDeletion,
+        onDismiss = itemCallbacks.onDeleteItemDismissed,
+        onConfirm = itemCallbacks.onDeleteItemConfirmed
+    )
+
+    if (uiState.isSyncSettingsVisible) {
+        SyncSettingsSheet(
+            settings = uiState.syncSettings,
+            syncCallbacks = syncCallbacks
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ShoppingListTopAppBar(
+    isSyncMenuExpanded: Boolean,
+    syncCallbacks: ShoppingListSyncCallbacks
+) {
+    TopAppBar(
+        title = {
+            Text(text = stringResource(R.string.shopping_list_title))
+        },
+        actions = {
+            Box {
+                IconButton(
+                    onClick = syncCallbacks.onSyncMenuClicked,
+                    modifier = Modifier.testTag(ShoppingListTestTags.SYNC_MENU_BUTTON)
                 ) {
-                    Text(
-                        text = stringResource(R.string.sync_settings),
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.padding(bottom = 16.dp)
+                    Icon(
+                        imageVector = Icons.Rounded.MoreVert,
+                        contentDescription = stringResource(R.string.sync_menu_open)
                     )
+                }
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = stringResource(R.string.sync_enabled_label),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        Switch(
-                            checked = settings.enabled,
-                            onCheckedChange = onSyncEnabledChanged,
-                            modifier = Modifier.testTag(ShoppingListTestTags.SYNC_ENABLED_SWITCH),
-                            enabled = !settings.isSaving
-                        )
-                    }
-
-                    Text(
-                        text = stringResource(R.string.sync_state_label, syncStateLabel(settings.syncState)),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp)
-                            .testTag(ShoppingListTestTags.SYNC_STATE_TEXT)
+                DropdownMenu(
+                    expanded = isSyncMenuExpanded,
+                    onDismissRequest = syncCallbacks.onSyncMenuDismissed
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.sync_now)) },
+                        onClick = syncCallbacks.onSyncNowRequested,
+                        modifier = Modifier.testTag(ShoppingListTestTags.SYNC_NOW_MENU_ITEM)
                     )
-
-                    OutlinedTextField(
-                        value = settings.serverUrl,
-                        onValueChange = onSyncServerUrlChanged,
-                        label = { Text(stringResource(R.string.sync_server_label)) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp)
-                            .testTag(ShoppingListTestTags.SYNC_SERVER_FIELD),
-                        singleLine = true,
-                        enabled = !settings.isSaving
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.sync_settings)) },
+                        onClick = syncCallbacks.onSyncSettingsRequested,
+                        modifier = Modifier.testTag(ShoppingListTestTags.SYNC_SETTINGS_MENU_ITEM)
                     )
-
-                    OutlinedTextField(
-                        value = settings.username,
-                        onValueChange = onSyncUsernameChanged,
-                        label = { Text(stringResource(R.string.sync_username_label)) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp)
-                            .testTag(ShoppingListTestTags.SYNC_USERNAME_FIELD),
-                        singleLine = true,
-                        enabled = !settings.isSaving
-                    )
-
-                    OutlinedTextField(
-                        value = settings.password,
-                        onValueChange = onSyncPasswordChanged,
-                        label = { Text(stringResource(R.string.sync_password_label)) },
-                        placeholder = {
-                            if (settings.hasStoredPassword && settings.password.isBlank()) {
-                                Text(stringResource(R.string.sync_password_saved_placeholder))
-                            }
-                        },
-                        visualTransformation = PasswordVisualTransformation(),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp)
-                            .testTag(ShoppingListTestTags.SYNC_PASSWORD_FIELD),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        enabled = !settings.isSaving
-                    )
-
-                    OutlinedTextField(
-                        value = settings.listName,
-                        onValueChange = onSyncListNameChanged,
-                        label = { Text(stringResource(R.string.sync_list_name_label)) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp)
-                            .testTag(ShoppingListTestTags.SYNC_LIST_NAME_FIELD),
-                        singleLine = true,
-                        enabled = !settings.isSaving
-                    )
-
-                    if (settings.isSaving) {
-                        LinearProgressIndicator(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 8.dp)
-                                .testTag(ShoppingListTestTags.SYNC_PROGRESS_INDICATOR)
-                        )
-                    }
-
-                    if (settings.statusMessage != null) {
-                        Text(
-                            text = settings.statusMessage,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 8.dp)
-                                .testTag(ShoppingListTestTags.SYNC_STATUS_TEXT)
-                        )
-                    }
-
-                    if (settings.pendingAction == CalDavPendingAction.CreateMissingList) {
-                        Button(
-                            onClick = onConfirmCreateMissingList,
-                            enabled = !settings.isSaving,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 8.dp)
-                                .testTag(ShoppingListTestTags.SYNC_CREATE_LIST_BUTTON)
-                        ) {
-                            Text(stringResource(R.string.sync_create_missing_list))
-                        }
-                    }
-
-                    Button(
-                        onClick = onSyncSettingsSaved,
-                        enabled = !settings.isSaving,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag(ShoppingListTestTags.SYNC_SAVE_BUTTON)
-                    ) {
-                        Text(stringResource(R.string.sync_save))
-                    }
                 }
             }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SyncSettingsSheet(
+    settings: ShoppingListSyncSettingsUiState,
+    syncCallbacks: ShoppingListSyncCallbacks
+) {
+    ModalBottomSheet(
+        onDismissRequest = syncCallbacks.onSyncSettingsDismissed,
+        modifier = Modifier.testTag(ShoppingListTestTags.SYNC_SETTINGS_SHEET)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
+                .testTag(ShoppingListTestTags.SYNC_SETTINGS_SHEET_CONTENT)
+        ) {
+            Text(
+                text = stringResource(R.string.sync_settings),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            SyncSettingsEnabledRow(
+                enabled = settings.enabled,
+                isSaving = settings.isSaving,
+                onSyncEnabledChanged = syncCallbacks.onSyncEnabledChanged
+            )
+            SyncSettingsStateText(settings.syncState)
+            SyncSettingsFields(settings = settings, syncCallbacks = syncCallbacks)
+            SyncSettingsStatus(settings = settings, syncCallbacks = syncCallbacks)
+
+            Button(
+                onClick = syncCallbacks.onSyncSettingsSaved,
+                enabled = !settings.isSaving,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(ShoppingListTestTags.SYNC_SAVE_BUTTON)
+            ) {
+                Text(stringResource(R.string.sync_save))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SyncSettingsEnabledRow(
+    enabled: Boolean,
+    isSaving: Boolean,
+    onSyncEnabledChanged: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = stringResource(R.string.sync_enabled_label),
+            style = MaterialTheme.typography.bodyLarge
+        )
+        Switch(
+            checked = enabled,
+            onCheckedChange = onSyncEnabledChanged,
+            modifier = Modifier.testTag(ShoppingListTestTags.SYNC_ENABLED_SWITCH),
+            enabled = !isSaving
+        )
+    }
+}
+
+@Composable
+private fun SyncSettingsStateText(syncState: CalDavSyncState) {
+    Text(
+        text = stringResource(R.string.sync_state_label, syncStateLabel(syncState)),
+        style = MaterialTheme.typography.bodyMedium,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp)
+            .testTag(ShoppingListTestTags.SYNC_STATE_TEXT)
+    )
+}
+
+@Composable
+private fun SyncSettingsFields(
+    settings: ShoppingListSyncSettingsUiState,
+    syncCallbacks: ShoppingListSyncCallbacks
+) {
+    val fieldsEnabled = !settings.isSaving
+
+    OutlinedTextField(
+        value = settings.serverUrl,
+        onValueChange = syncCallbacks.onSyncServerUrlChanged,
+        label = { Text(stringResource(R.string.sync_server_label)) },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp)
+            .testTag(ShoppingListTestTags.SYNC_SERVER_FIELD),
+        singleLine = true,
+        enabled = fieldsEnabled
+    )
+
+    OutlinedTextField(
+        value = settings.username,
+        onValueChange = syncCallbacks.onSyncUsernameChanged,
+        label = { Text(stringResource(R.string.sync_username_label)) },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp)
+            .testTag(ShoppingListTestTags.SYNC_USERNAME_FIELD),
+        singleLine = true,
+        enabled = fieldsEnabled
+    )
+
+    OutlinedTextField(
+        value = settings.password,
+        onValueChange = syncCallbacks.onSyncPasswordChanged,
+        label = { Text(stringResource(R.string.sync_password_label)) },
+        placeholder = {
+            if (settings.hasStoredPassword && settings.password.isBlank()) {
+                Text(stringResource(R.string.sync_password_saved_placeholder))
+            }
+        },
+        visualTransformation = PasswordVisualTransformation(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp)
+            .testTag(ShoppingListTestTags.SYNC_PASSWORD_FIELD),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        enabled = fieldsEnabled
+    )
+
+    OutlinedTextField(
+        value = settings.listName,
+        onValueChange = syncCallbacks.onSyncListNameChanged,
+        label = { Text(stringResource(R.string.sync_list_name_label)) },
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp)
+            .testTag(ShoppingListTestTags.SYNC_LIST_NAME_FIELD),
+        singleLine = true,
+        enabled = fieldsEnabled
+    )
+}
+
+@Composable
+private fun SyncSettingsStatus(
+    settings: ShoppingListSyncSettingsUiState,
+    syncCallbacks: ShoppingListSyncCallbacks
+) {
+    if (settings.isSaving) {
+        LinearProgressIndicator(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp)
+                .testTag(ShoppingListTestTags.SYNC_PROGRESS_INDICATOR)
+        )
+    }
+
+    if (settings.statusMessage != null) {
+        Text(
+            text = settings.statusMessage,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp)
+                .testTag(ShoppingListTestTags.SYNC_STATUS_TEXT)
+        )
+    }
+
+    if (settings.pendingAction == CalDavPendingAction.CreateMissingList) {
+        Button(
+            onClick = syncCallbacks.onConfirmCreateMissingList,
+            enabled = !settings.isSaving,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp)
+                .testTag(ShoppingListTestTags.SYNC_CREATE_LIST_BUTTON)
+        ) {
+            Text(stringResource(R.string.sync_create_missing_list))
         }
     }
 }
@@ -398,9 +514,7 @@ fun ShoppingListScreen(
 private fun ShoppingInputBar(
     value: String,
     suggestions: List<String>,
-    onValueChange: (String) -> Unit,
-    onDone: () -> Unit,
-    onSuggestionSelected: (String) -> Unit,
+    inputCallbacks: ShoppingListInputCallbacks,
     onContentHeightChanged: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -425,62 +539,87 @@ private fun ShoppingInputBar(
                 .onSizeChanged { onContentHeightChanged(it.height) }
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            OutlinedTextField(
+            ShoppingInputField(
                 value = value,
-                onValueChange = onValueChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(focusRequester)
-                    .testTag(ShoppingListTestTags.INPUT_FIELD),
-                label = { Text(text = stringResource(R.string.add_item_label)) },
-                placeholder = { Text(text = stringResource(R.string.add_item_placeholder)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        onDone()
-                        restoreContinuousEntry()
-                    }
-                ),
-                trailingIcon = {
-                    Icon(
-                        imageVector = Icons.Rounded.AddTask,
-                        contentDescription = null
-                    )
+                inputCallbacks = inputCallbacks,
+                focusRequester = focusRequester,
+                onContinuousEntryRequested = ::restoreContinuousEntry
+            )
+            ShoppingSuggestionsList(
+                suggestions = suggestions,
+                onSuggestionSelected = { suggestion ->
+                    inputCallbacks.onSuggestionSelected(suggestion)
+                    restoreContinuousEntry()
                 }
             )
+        }
+    }
+}
 
-            AnimatedVisibility(visible = suggestions.isNotEmpty()) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                        .heightIn(max = 176.dp)
-                        .testTag(ShoppingListTestTags.SUGGESTION_LIST),
-                    shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerLow
-                ) {
-                    LazyColumn(reverseLayout = true) {
-                        suggestions.forEachIndexed { index, suggestion ->
-                            item(key = suggestion) {
-                                if (index > 0) {
-                                    HorizontalDivider()
-                                }
-                                Text(
-                                    text = suggestion,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .defaultMinSize(minHeight = 56.dp)
-                                        .clickable {
-                                            onSuggestionSelected(suggestion)
-                                            restoreContinuousEntry()
-                                        }
-                                        .padding(horizontal = 16.dp, vertical = 14.dp)
-                                        .testTag(ShoppingListTestTags.suggestionItem(suggestion))
-                                )
-                            }
+@Composable
+private fun ShoppingInputField(
+    value: String,
+    inputCallbacks: ShoppingListInputCallbacks,
+    focusRequester: FocusRequester,
+    onContinuousEntryRequested: () -> Unit
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = inputCallbacks.onValueChange,
+        modifier = Modifier
+            .fillMaxWidth()
+            .focusRequester(focusRequester)
+            .testTag(ShoppingListTestTags.INPUT_FIELD),
+        label = { Text(text = stringResource(R.string.add_item_label)) },
+        placeholder = { Text(text = stringResource(R.string.add_item_placeholder)) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(
+            onDone = {
+                inputCallbacks.onAddItem()
+                onContinuousEntryRequested()
+            }
+        ),
+        trailingIcon = {
+            Icon(
+                imageVector = Icons.Rounded.AddTask,
+                contentDescription = null
+            )
+        }
+    )
+}
+
+@Composable
+private fun ShoppingSuggestionsList(
+    suggestions: List<String>,
+    onSuggestionSelected: (String) -> Unit
+) {
+    AnimatedVisibility(visible = suggestions.isNotEmpty()) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+                .heightIn(max = 176.dp)
+                .testTag(ShoppingListTestTags.SUGGESTION_LIST),
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerLow
+        ) {
+            LazyColumn(reverseLayout = true) {
+                suggestions.forEachIndexed { index, suggestion ->
+                    item(key = suggestion) {
+                        if (index > 0) {
+                            HorizontalDivider()
                         }
+                        Text(
+                            text = suggestion,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .defaultMinSize(minHeight = 56.dp)
+                                .clickable { onSuggestionSelected(suggestion) }
+                                .padding(horizontal = 16.dp, vertical = 14.dp)
+                                .testTag(ShoppingListTestTags.suggestionItem(suggestion))
+                        )
                     }
                 }
             }
@@ -519,12 +658,12 @@ private fun BulkPurchaseFab(
 @Composable
 private fun ShoppingItemsContent(
     uiState: ShoppingListUiState,
-    onPendingItemClick: (String) -> Unit,
-    onPurchasedItemClick: (String) -> Unit,
-    onDeleteItemRequested: (ShoppingItem) -> Unit,
+    itemCallbacks: ShoppingListItemCallbacks,
     modifier: Modifier = Modifier
 ) {
     val swipeResetTrigger = uiState.itemPendingDeletion?.id.orEmpty()
+    val emptyPendingTitle = stringResource(R.string.empty_pending_title)
+    val emptyPurchasedTitle = stringResource(R.string.empty_purchased_title)
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -538,27 +677,13 @@ private fun ShoppingItemsContent(
             )
         }
 
-        if (uiState.pendingItems.isEmpty()) {
-            item(key = ShoppingListTestTags.EMPTY_STATE) {
-                EmptyStateCard(
-                    title = stringResource(R.string.empty_pending_title),
-                    modifier = Modifier.testTag(ShoppingListTestTags.EMPTY_STATE)
-                )
-            }
-        } else {
-            items(
-                items = uiState.pendingItems,
-                key = { item -> item.id }
-            ) { item ->
-                PendingItemRow(
-                    item = item,
-                    isSelected = item.id in uiState.selectedIds,
-                    onClick = { onPendingItemClick(item.id) },
-                    onDeleteRequested = { onDeleteItemRequested(item) },
-                    swipeResetTrigger = swipeResetTrigger
-                )
-            }
-        }
+        pendingItemsSection(
+            pendingItems = uiState.pendingItems,
+            selectedIds = uiState.selectedIds,
+            swipeResetTrigger = swipeResetTrigger,
+            itemCallbacks = itemCallbacks,
+            emptyPendingTitle = emptyPendingTitle
+        )
 
         item(key = ShoppingListTestTags.SECTION_DIVIDER) {
             HorizontalDivider(modifier = Modifier.testTag(ShoppingListTestTags.SECTION_DIVIDER))
@@ -571,25 +696,71 @@ private fun ShoppingItemsContent(
             )
         }
 
-        if (uiState.purchasedItems.isEmpty()) {
-            item(key = "purchased_empty") {
-                EmptyStateCard(
-                    title = stringResource(R.string.empty_purchased_title)
-                )
-            }
-        } else {
-            items(
-                items = uiState.purchasedItems,
-                key = { item -> item.id }
-            ) { item ->
-                PurchasedItemRow(
-                    item = item,
-                    onClick = { onPurchasedItemClick(item.id) },
-                    onDeleteRequested = { onDeleteItemRequested(item) },
-                    swipeResetTrigger = swipeResetTrigger
-                )
-            }
+        purchasedItemsSection(
+            purchasedItems = uiState.purchasedItems,
+            swipeResetTrigger = swipeResetTrigger,
+            itemCallbacks = itemCallbacks,
+            emptyPurchasedTitle = emptyPurchasedTitle
+        )
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.pendingItemsSection(
+    pendingItems: List<ShoppingItem>,
+    selectedIds: Set<String>,
+    swipeResetTrigger: String,
+    itemCallbacks: ShoppingListItemCallbacks,
+    emptyPendingTitle: String
+) {
+    if (pendingItems.isEmpty()) {
+        item(key = ShoppingListTestTags.EMPTY_STATE) {
+            EmptyStateCard(
+                title = emptyPendingTitle,
+                modifier = Modifier.testTag(ShoppingListTestTags.EMPTY_STATE)
+            )
         }
+        return
+    }
+
+    items(
+        items = pendingItems,
+        key = { item -> item.id }
+    ) { item ->
+        PendingItemRow(
+            item = item,
+            isSelected = item.id in selectedIds,
+            onClick = { itemCallbacks.onPendingItemClick(item.id) },
+            onDeleteRequested = { itemCallbacks.onDeleteItemRequested(item) },
+            swipeResetTrigger = swipeResetTrigger
+        )
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.purchasedItemsSection(
+    purchasedItems: List<ShoppingItem>,
+    swipeResetTrigger: String,
+    itemCallbacks: ShoppingListItemCallbacks,
+    emptyPurchasedTitle: String
+) {
+    if (purchasedItems.isEmpty()) {
+        item(key = "purchased_empty") {
+            EmptyStateCard(
+                title = emptyPurchasedTitle
+            )
+        }
+        return
+    }
+
+    items(
+        items = purchasedItems,
+        key = { item -> item.id }
+    ) { item ->
+        PurchasedItemRow(
+            item = item,
+            onClick = { itemCallbacks.onPurchasedItemClick(item.id) },
+            onDeleteRequested = { itemCallbacks.onDeleteItemRequested(item) },
+            swipeResetTrigger = swipeResetTrigger
+        )
     }
 }
 
@@ -669,12 +840,16 @@ private fun PendingItemRow(
 
     ShoppingItemRow(
         name = item.name,
-        leadingIcon = if (isSelected) Icons.Rounded.Check else Icons.Rounded.RadioButtonUnchecked,
-        containerColor = containerColor,
-        onClick = onClick,
-        onDeleteRequested = onDeleteRequested,
-        swipeTag = ShoppingListTestTags.swipePendingItem(item.id),
-        swipeResetTrigger = swipeResetTrigger,
+        visuals = ShoppingItemRowVisuals(
+            leadingIcon = if (isSelected) Icons.Rounded.Check else Icons.Rounded.RadioButtonUnchecked,
+            containerColor = containerColor
+        ),
+        interactions = ShoppingItemRowInteractions(
+            onClick = onClick,
+            onDeleteRequested = onDeleteRequested,
+            swipeTag = ShoppingListTestTags.swipePendingItem(item.id),
+            swipeResetTrigger = swipeResetTrigger
+        ),
         modifier = modifier
             .fillMaxWidth()
             .semantics { contentDescription = item.name }
@@ -692,14 +867,18 @@ private fun PurchasedItemRow(
 ) {
     ShoppingItemRow(
         name = item.name,
-        leadingIcon = Icons.Rounded.History,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        textDecoration = TextDecoration.LineThrough,
-        rowAlpha = 0.6f,
-        onClick = onClick,
-        onDeleteRequested = onDeleteRequested,
-        swipeTag = ShoppingListTestTags.swipePurchasedItem(item.id),
-        swipeResetTrigger = swipeResetTrigger,
+        visuals = ShoppingItemRowVisuals(
+            leadingIcon = Icons.Rounded.History,
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            textDecoration = TextDecoration.LineThrough,
+            rowAlpha = 0.6f
+        ),
+        interactions = ShoppingItemRowInteractions(
+            onClick = onClick,
+            onDeleteRequested = onDeleteRequested,
+            swipeTag = ShoppingListTestTags.swipePurchasedItem(item.id),
+            swipeResetTrigger = swipeResetTrigger
+        ),
         modifier = modifier
             .fillMaxWidth()
             .semantics { contentDescription = item.name }
@@ -710,26 +889,20 @@ private fun PurchasedItemRow(
 @Composable
 private fun ShoppingItemRow(
     name: String,
-    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector,
-    containerColor: androidx.compose.ui.graphics.Color,
-    onClick: () -> Unit,
-    onDeleteRequested: () -> Unit,
-    swipeTag: String,
-    swipeResetTrigger: String,
+    visuals: ShoppingItemRowVisuals,
+    interactions: ShoppingItemRowInteractions,
     modifier: Modifier = Modifier,
-    textDecoration: TextDecoration? = null,
-    rowAlpha: Float = 1f
 ) {
     val dismissState = rememberSwipeToDismissBoxState()
 
     LaunchedEffect(dismissState.currentValue) {
         if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
-            onDeleteRequested()
+            interactions.onDeleteRequested()
             dismissState.reset()
         }
     }
 
-    LaunchedEffect(swipeResetTrigger) {
+    LaunchedEffect(interactions.swipeResetTrigger) {
         if (
             dismissState.currentValue != SwipeToDismissBoxValue.Settled ||
                 dismissState.targetValue != SwipeToDismissBoxValue.Settled
@@ -747,20 +920,20 @@ private fun ShoppingItemRow(
                 isActive = dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart
             )
         },
-        modifier = Modifier.testTag(swipeTag)
+        modifier = Modifier.testTag(interactions.swipeTag)
     ) {
         Row(
             modifier = modifier
-                .alpha(rowAlpha)
+                .alpha(visuals.rowAlpha)
                 .clip(RoundedCornerShape(18.dp))
-                .background(containerColor)
+                .background(visuals.containerColor)
                 .heightIn(min = 56.dp)
                 .padding(horizontal = 16.dp)
-                .clickable(onClick = onClick),
+                .clickable(onClick = interactions.onClick),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = leadingIcon,
+                imageVector = visuals.leadingIcon,
                 contentDescription = null,
                 modifier = Modifier.size(20.dp)
             )
@@ -770,7 +943,7 @@ private fun ShoppingItemRow(
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                textDecoration = textDecoration,
+                textDecoration = visuals.textDecoration,
                 modifier = Modifier
                     .weight(1f)
                     .padding(vertical = 12.dp)

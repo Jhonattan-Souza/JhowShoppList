@@ -38,7 +38,7 @@ class AndroidKeystorePasswordStorage @Inject constructor(
                 init(
                     Cipher.DECRYPT_MODE,
                     keyProvider.getOrCreateSecretKey(),
-                    GCMParameterSpec(128, Base64.decode(saved.iv, Base64.NO_WRAP))
+                    GCMParameterSpec(GCM_TAG_LENGTH_BITS, Base64.decode(saved.iv, Base64.NO_WRAP))
                 )
             }
             val decrypted = cipher.doFinal(Base64.decode(saved.cipherText, Base64.NO_WRAP))
@@ -54,6 +54,7 @@ class AndroidKeystorePasswordStorage @Inject constructor(
 
     private companion object {
         const val TRANSFORMATION = "AES/GCM/NoPadding"
+        const val GCM_TAG_LENGTH_BITS = 128
     }
 }
 

@@ -1,5 +1,6 @@
 package com.jhow.shopplist.data.sync
 
+import at.bitfire.dav4jvm.exception.UnauthorizedException
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
 import java.util.concurrent.atomic.AtomicReference
@@ -10,6 +11,35 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class Dav4jvmCalDavDiscoveryServiceTest {
+
+    @Test
+    fun `findTaskCollections preserves auth failure cause`() = runTest {
+        val server = HttpServer.create(InetSocketAddress(0), 0)
+        server.createContext("/") { exchange ->
+            exchange.sendResponseHeaders(401, -1)
+            exchange.close()
+        }
+        server.start()
+
+        try {
+            val service = Dav4jvmCalDavDiscoveryService(VTodoMapper())
+
+            var thrown: CalDavAuthenticationException? = null
+            try {
+                service.findTaskCollections(
+                    serverUrl = "http://127.0.0.1:${server.address.port}/",
+                    username = "testuser",
+                    password = "testpass123"
+                )
+            } catch (exception: CalDavAuthenticationException) {
+                thrown = exception
+            }
+
+            assertTrue(thrown?.cause is UnauthorizedException)
+        } finally {
+            server.stop(0)
+        }
+    }
 
     @Test
     fun `findTaskCollections returns named collections from DAV multistatus`() = runTest {
@@ -77,8 +107,9 @@ class Dav4jvmCalDavDiscoveryServiceTest {
         val server = HttpServer.create(InetSocketAddress(0), 0)
         val requestBody = AtomicReference<String>()
         val contentType = AtomicReference<String?>()
+        val requestMethod = AtomicReference<String?>()
         server.createContext("/Groceries/") { exchange ->
-            assertEquals("MKCOL", exchange.requestMethod)
+            requestMethod.set(exchange.requestMethod)
             requestBody.set(exchange.requestBody.use { it.readBytes().toString(Charsets.UTF_8) })
             contentType.set(exchange.requestHeaders.getFirst("Content-Type"))
             exchange.sendResponseHeaders(201, -1)
@@ -96,8 +127,13 @@ class Dav4jvmCalDavDiscoveryServiceTest {
                 listName = "Groceries"
             )
 
+            assertEquals("MKCOL", requestMethod.get())
             assertEquals("http://127.0.0.1:${server.address.port}/Groceries/", href)
             assertEquals("application/xml; charset=utf-8", contentType.get())
+            assertTrue(
+                "Actual request body: ${requestBody.get()}",
+                requestBody.get().contains("<displayname>Groceries</displayname>")
+            )
             assertEquals(
                 "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
                     "<mkcol xmlns=\"DAV:\" xmlns:C=\"urn:ietf:params:xml:ns:caldav\">" +

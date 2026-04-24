@@ -21,9 +21,13 @@ class CalDavSecurePreferences @Inject constructor(
     }
 
     internal fun readPassword(): PasswordEntry? {
-        val cipherText = prefs.getString(KEY_CIPHER_TEXT, null) ?: return null
-        val iv = prefs.getString(KEY_IV, null) ?: return null
-        return PasswordEntry(cipherText = cipherText, iv = iv)
+        val cipherText = prefs.getString(KEY_CIPHER_TEXT, null)
+        val iv = prefs.getString(KEY_IV, null)
+        return if (cipherText != null && iv != null) {
+            PasswordEntry(cipherText = cipherText, iv = iv)
+        } else {
+            null
+        }
     }
 
     fun clearPassword() {

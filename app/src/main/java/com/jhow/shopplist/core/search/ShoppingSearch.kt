@@ -11,40 +11,22 @@ object ShoppingSearch {
         .lowercase(Locale.ROOT)
 
     fun suggestionScore(candidate: String, normalizedQuery: String): Int? {
-        if (normalizedQuery.length < MIN_SUGGESTION_QUERY_LENGTH) {
-            return null
-        }
-
         val normalizedCandidate = normalize(candidate)
-        if (normalizedCandidate.isEmpty()) {
-            return null
-        }
-
-        if (normalizedCandidate == normalizedQuery) {
-            return EXACT_MATCH_SCORE
-        }
-
-        if (normalizedCandidate.startsWith(normalizedQuery)) {
-            return PREFIX_MATCH_SCORE
-        }
-
-        if (hasWordPrefixMatch(normalizedCandidate, normalizedQuery)) {
-            return WORD_PREFIX_MATCH_SCORE
-        }
-
         val substringIndex = normalizedCandidate.indexOf(normalizedQuery)
-        if (substringIndex >= 0) {
-            return SUBSTRING_MATCH_SCORE + substringIndex
-        }
 
-        if (normalizedQuery.length < MIN_FUZZY_QUERY_LENGTH) {
-            return null
+        return when {
+            normalizedQuery.length < MIN_SUGGESTION_QUERY_LENGTH -> null
+            normalizedCandidate.isEmpty() -> null
+            normalizedCandidate == normalizedQuery -> EXACT_MATCH_SCORE
+            normalizedCandidate.startsWith(normalizedQuery) -> PREFIX_MATCH_SCORE
+            hasWordPrefixMatch(normalizedCandidate, normalizedQuery) -> WORD_PREFIX_MATCH_SCORE
+            substringIndex >= 0 -> SUBSTRING_MATCH_SCORE + substringIndex
+            normalizedQuery.length < MIN_FUZZY_QUERY_LENGTH -> null
+            else -> subsequencePenalty(
+                candidate = normalizedCandidate,
+                query = normalizedQuery
+            )?.let { FUZZY_SUBSEQUENCE_MATCH_SCORE + it }
         }
-
-        return subsequencePenalty(
-            candidate = normalizedCandidate,
-            query = normalizedQuery
-        )?.let { FUZZY_SUBSEQUENCE_MATCH_SCORE + it }
     }
 
     private fun hasWordPrefixMatch(candidate: String, query: String): Boolean {

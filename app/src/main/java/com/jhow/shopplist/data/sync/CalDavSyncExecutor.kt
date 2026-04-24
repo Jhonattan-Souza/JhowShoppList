@@ -9,7 +9,6 @@ import javax.inject.Inject
 class CalDavSyncExecutor @Inject constructor(
     private val repository: ShoppingListRepository,
     private val planner: CalDavSyncPlanner,
-    private val mapper: VTodoMapper,
     private val discoveryService: CalDavDiscoveryService
 ) {
     suspend fun execute(

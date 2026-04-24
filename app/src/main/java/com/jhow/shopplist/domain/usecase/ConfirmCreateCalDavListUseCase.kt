@@ -1,8 +1,8 @@
 package com.jhow.shopplist.domain.usecase
 
 import com.jhow.shopplist.core.dispatchers.IoDispatcher
-import com.jhow.shopplist.data.sync.CalDavDiscoveryService
 import com.jhow.shopplist.data.sync.CalDavAuthenticationException
+import com.jhow.shopplist.data.sync.CalDavDiscoveryService
 import com.jhow.shopplist.domain.model.CalDavValidationResult
 import com.jhow.shopplist.domain.sync.CalDavConfigRepository
 import java.util.concurrent.CancellationException
@@ -21,23 +21,38 @@ open class ConfirmCreateCalDavListUseCase @Inject constructor(
         listName: String,
         password: String
     ): CalDavValidationResult {
-        if (serverUrl.isBlank() || username.isBlank() || listName.isBlank()) {
-            return CalDavValidationResult.ConfigurationError(
+        val resolvedPassword = password.ifBlank { repository.getPassword().orEmpty() }
+        return validateInputs(serverUrl, username, listName, resolvedPassword)
+            ?: createListAndMapResult(serverUrl, username, resolvedPassword, listName)
+    }
+
+    private fun validateInputs(
+        serverUrl: String,
+        username: String,
+        listName: String,
+        resolvedPassword: String
+    ): CalDavValidationResult? = when {
+        serverUrl.isBlank() || username.isBlank() || listName.isBlank() ->
+            CalDavValidationResult.ConfigurationError(
                 message = "Server, username, and list name are required"
             )
-        }
+        resolvedPassword.isBlank() ->
+            CalDavValidationResult.ConfigurationError(message = "Password is required")
+        else -> null
+    }
 
-        val resolvedPassword = password.ifBlank { repository.getPassword().orEmpty() }
-        if (resolvedPassword.isBlank()) {
-            return CalDavValidationResult.ConfigurationError(message = "Password is required")
-        }
-
+    private suspend fun createListAndMapResult(
+        serverUrl: String,
+        username: String,
+        password: String,
+        listName: String
+    ): CalDavValidationResult {
         return try {
             val href = withContext(ioDispatcher) {
                 discoveryService.createTaskCollection(
                     serverUrl = serverUrl,
                     username = username,
-                    password = resolvedPassword,
+                    password = password,
                     listName = listName
                 )
             }

@@ -1,53 +1,97 @@
-# Detekt config — builds upon Detekt defaults (buildUponDefaultConfig = true).
+# Detekt config (Detekt 1.23.x) — builds upon Detekt defaults (buildUponDefaultConfig = true).
 # Only rules that differ from the defaults are listed here.
+# Key names follow the 1.23.x schema; do not migrate to 2.0 keys without bumping the plugin.
 
 complexity:
   active: true
   CyclomaticComplexMethod:
     active: true
-    threshold: 10
-    ignoreSingleWhenExpression: true   # sealed-class when() is idiomatic, not a smell
+    threshold: 10                        # stricter than Detekt default (14); aligns with SonarQube
+    ignoreSingleWhenExpression: true     # sealed-class when() is idiomatic, not a smell
     ignoreSimpleWhenEntries: true
-  CognitiveComplexity:
+  CognitiveComplexMethod:
     active: true
-    threshold: 15                      # aligns with SonarQube default
+    threshold: 15                        # aligns with SonarQube / Detekt default
   LongMethod:
     active: true
-    threshold: 60                      # relaxed for Compose UI functions
+    threshold: 80                        # Compose screens legitimately run longer than the 60-line default
   LongParameterList:
     active: true
-    threshold: 7
-    ignoreDefaultParameters: true      # Compose composables use many @DefaultValue params
+    functionThreshold: 7
+    constructorThreshold: 7
+    ignoreDefaultParameters: true        # Compose composables use many parameters with defaults
+    ignoreAnnotatedParameter:
+      - 'Composable'
   TooManyFunctions:
     active: true
-    thresholdInFiles: 20
+    thresholdInFiles: 15                 # was 20 — 15 still leaves room for Compose screen files
     thresholdInClasses: 15
     thresholdInInterfaces: 10
     thresholdInObjects: 10
     thresholdInEnums: 5
+    ignorePrivate: true                  # private helpers don't count toward SRP budget
+    ignoreOverridden: true               # overrides are dictated by supertype, not design
+    ignoreAnnotatedFunctions:
+      - 'Composable'
 
 naming:
   active: true
   FunctionNaming:
     active: true
-    functionPattern: '[a-zA-Z][a-zA-Z0-9]*'   # allows PascalCase
-    ignoreAnnotated: ['Composable']             # @Composable functions must be PascalCase
+    functionPattern: '[a-zA-Z][a-zA-Z0-9]*'   # allows PascalCase for @Composable
+    ignoreAnnotated: ['Composable']
 
 style:
   active: true
   MagicNumber:
     active: true
-    ignoreNumbers: ["-1", "0", "1", "2"]
+    ignoreNumbers: ['-1', '0', '1', '2']
     ignoreConstantDeclaration: true
     ignoreCompanionObjectPropertyDeclaration: true
     ignoreEnums: true
     ignoreRanges: false
+  ReturnCount:
+    active: true
+    max: 3                               # default is 2; 3 is friendlier to guard-clause style
+    excludeGuardClauses: true
+  ThrowsCount:
+    active: true
+    max: 2
+  ForbiddenComment:
+    active: true
+    comments:
+      - reason: 'Forbidden FIXME todo marker in comment, please fix the problem.'
+        value: 'FIXME:'
+      - reason: 'Forbidden STOPSHIP todo marker in comment, please address before shipping.'
+        value: 'STOPSHIP:'
+      - reason: 'TODO must reference an issue (e.g. TODO(#123) or TODO: #123 ...).'
+        value: 'TODO(?!\s*[:(]\s*#\d+)'
+  WildcardImport:
+    active: true
+    excludeImports:
+      - 'java.util.*'
+  MaxLineLength:
+    active: true
+    maxLineLength: 140                   # slightly above default 120 to fit typical Compose signatures
+    excludePackageStatements: true
+    excludeImportStatements: true
+    excludeCommentStatements: false
+
+performance:
+  active: true                           # enable explicitly; catches SpreadOperator, ArrayPrimitive, etc.
 
 potential-bugs:
   active: true
 
 coroutines:
-  active: true   # catches GlobalScope usage, RedundantSuspendModifier, etc.
+  active: true                           # catches GlobalScope usage, RedundantSuspendModifier, etc.
 
 exceptions:
   active: true
+  SwallowedException:
+    active: true
+    ignoredExceptionTypes:
+      - InterruptedException
+      - NumberFormatException
+      - ParseException
+      - MalformedURLException

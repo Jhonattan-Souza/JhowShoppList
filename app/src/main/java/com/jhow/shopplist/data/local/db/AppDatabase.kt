@@ -9,9 +9,14 @@ import com.jhow.shopplist.data.local.dao.ShoppingItemDao
 import com.jhow.shopplist.data.local.entity.ShoppingItemEntity
 import com.jhow.shopplist.core.search.ShoppingSearch
 
+private const val CURRENT_DATABASE_VERSION = 3
+private const val VERSION_1 = 1
+private const val VERSION_2 = 2
+private const val VERSION_3 = 3
+
 @Database(
     entities = [ShoppingItemEntity::class],
-    version = 3,
+    version = CURRENT_DATABASE_VERSION,
     exportSchema = false
 )
 @TypeConverters(RoomConverters::class)
@@ -21,7 +26,7 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         const val DATABASE_NAME: String = "shopping-list.db"
 
-        val MIGRATION_1_2: Migration = object : Migration(1, 2) {
+        val MIGRATION_1_2: Migration = object : Migration(VERSION_1, VERSION_2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
                     """
@@ -53,7 +58,7 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        val MIGRATION_2_3: Migration = object : Migration(2, 3) {
+        val MIGRATION_2_3: Migration = object : Migration(VERSION_2, VERSION_3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE items ADD COLUMN remoteUid TEXT")
                 db.execSQL("ALTER TABLE items ADD COLUMN remoteHref TEXT")
