@@ -48,6 +48,7 @@ if [[ ! -f "$release_store_file" ]]; then
 fi
 
 mkdir -p "$DESTINATION_ROOT"
+umask 077
 
 timestamp="$(date +%Y%m%d-%H%M%S)"
 backup_dir="$DESTINATION_ROOT/jhow-shopplist-release-$timestamp"
