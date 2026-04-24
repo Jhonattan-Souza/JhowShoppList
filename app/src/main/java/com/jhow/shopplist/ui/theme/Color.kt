@@ -16,4 +16,4 @@ private const val WHEAT_GOLD_HEX = 0xFFC7A96B
 private const val CREAM_HEX = 0xFFFFFBF3
 private const val CHARCOAL_HEX = 0xFF1D2722
 private const val FOG_HEX = 0xFFE5E1D8
-private const val SLATE_HEX = 0xFF5B635E
+private const val SLATE_HEX = 0xFF404843
