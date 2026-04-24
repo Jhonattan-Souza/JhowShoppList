@@ -24,22 +24,11 @@ class ShoppingListSyncMenuTest {
                 uiState = ShoppingListUiState(
                     isSyncMenuExpanded = true
                 ),
-                onInputValueChange = {},
-                onAddItem = {},
-                onSuggestionSelected = {},
-                onPendingItemClick = {},
-                onPurchasedItemClick = {},
-                onPurchaseSelectedItems = {},
-                onDeleteItemRequested = {},
-                onDeleteItemDismissed = {},
-                onDeleteItemConfirmed = {},
-                onSyncMenuClicked = {},
-                onSyncMenuDismissed = {},
-                onSyncSettingsRequested = {},
-                onSyncSettingsDismissed = {},
-                onSyncSettingsSaved = {},
-                onSyncNowRequested = { syncNowClicked = true },
-                onConfirmCreateMissingList = {}
+                inputCallbacks = ShoppingListInputCallbacks(),
+                itemCallbacks = ShoppingListItemCallbacks(),
+                syncCallbacks = ShoppingListSyncCallbacks(
+                    onSyncNowRequested = { syncNowClicked = true }
+                )
             )
         }
 

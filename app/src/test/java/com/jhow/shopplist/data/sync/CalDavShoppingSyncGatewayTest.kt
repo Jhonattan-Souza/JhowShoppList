@@ -39,7 +39,6 @@ class CalDavShoppingSyncGatewayTest {
         val executor = CalDavSyncExecutor(
             repository = repository,
             planner = CalDavSyncPlanner(),
-            mapper = VTodoMapper(),
             discoveryService = discoveryService
         )
         val gateway = CalDavShoppingSyncGateway(
@@ -77,7 +76,6 @@ class CalDavShoppingSyncGatewayTest {
         val executor = CalDavSyncExecutor(
             repository = FakeShoppingListRepository(),
             planner = CalDavSyncPlanner(),
-            mapper = VTodoMapper(),
             discoveryService = discoveryService
         )
         val gateway = CalDavShoppingSyncGateway(
@@ -124,7 +122,6 @@ class CalDavShoppingSyncGatewayTest {
         val executor = CalDavSyncExecutor(
             repository = repository,
             planner = CalDavSyncPlanner(),
-            mapper = VTodoMapper(),
             discoveryService = discoveryService
         )
         val gateway = CalDavShoppingSyncGateway(
@@ -163,7 +160,6 @@ class CalDavShoppingSyncGatewayTest {
         val executor = CalDavSyncExecutor(
             repository = repository,
             planner = CalDavSyncPlanner(),
-            mapper = VTodoMapper(),
             discoveryService = discoveryService
         )
         val gateway = CalDavShoppingSyncGateway(
@@ -201,7 +197,6 @@ class CalDavShoppingSyncGatewayTest {
         val executor = CalDavSyncExecutor(
             repository = FakeShoppingListRepository(),
             planner = CalDavSyncPlanner(),
-            mapper = VTodoMapper(),
             discoveryService = discoveryService
         )
         val gateway = CalDavShoppingSyncGateway(
@@ -241,7 +236,6 @@ class CalDavShoppingSyncGatewayTest {
         val executor = CalDavSyncExecutor(
             repository = FakeShoppingListRepository(),
             planner = CalDavSyncPlanner(),
-            mapper = VTodoMapper(),
             discoveryService = discoveryService
         )
         val gateway = CalDavShoppingSyncGateway(
@@ -279,7 +273,6 @@ class CalDavShoppingSyncGatewayTest {
         val executor = CalDavSyncExecutor(
             repository = FakeShoppingListRepository(),
             planner = CalDavSyncPlanner(),
-            mapper = VTodoMapper(),
             discoveryService = discoveryService
         )
         val gateway = CalDavShoppingSyncGateway(

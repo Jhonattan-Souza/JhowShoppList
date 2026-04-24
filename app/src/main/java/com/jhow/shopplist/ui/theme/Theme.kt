@@ -34,10 +34,12 @@ private val LightColorScheme = lightColorScheme(
     surface = Cream,
     onSurface = Charcoal,
     surfaceContainerLow = Fog,
-    secondaryContainer = Color(0xFFD6E4DA),
+    secondaryContainer = Color(LIGHT_SECONDARY_CONTAINER_HEX),
     onSecondaryContainer = Charcoal,
     outline = Slate
 )
+
+private const val LIGHT_SECONDARY_CONTAINER_HEX = 0xFFD6E4DA
 
 @Composable
 fun JhowShoppListTheme(

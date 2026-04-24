@@ -69,6 +69,69 @@ class ShoppingListViewModelTest {
     }
 
     @Test
+    fun `resolveSyncSettingsSubmission success clears password and preserves stored password state`() {
+        val current = ShoppingListSyncSettingsUiState(
+            enabled = true,
+            serverUrl = "https://dav.example.com",
+            username = "jhow",
+            password = "secret",
+            listName = "Groceries",
+            hasStoredPassword = false,
+            isSaving = true,
+            pendingAction = CalDavPendingAction.None
+        )
+
+        val outcome = resolveSyncSettingsSubmission(
+            current = current,
+            result = CalDavValidationResult.Success("/lists/groceries/")
+        )
+
+        assertEquals(
+            SyncSettingsSubmissionOutcome.Success(
+                resolvedCollectionUrl = "/lists/groceries/",
+                updatedForm = current.copy(
+                    password = "",
+                    hasStoredPassword = true,
+                    isSaving = false,
+                    statusMessage = null,
+                    pendingAction = CalDavPendingAction.None
+                )
+            ),
+            outcome
+        )
+    }
+
+    @Test
+    fun `resolveSyncSettingsSubmission missing list keeps sheet state and exposes pending action`() {
+        val current = ShoppingListSyncSettingsUiState(
+            enabled = true,
+            serverUrl = "https://dav.example.com",
+            username = "jhow",
+            password = "secret",
+            listName = "Groceries",
+            hasStoredPassword = false,
+            isSaving = true,
+            pendingAction = CalDavPendingAction.None
+        )
+
+        val outcome = resolveSyncSettingsSubmission(
+            current = current,
+            result = CalDavValidationResult.MissingList("Groceries")
+        )
+
+        assertEquals(
+            SyncSettingsSubmissionOutcome.Failure(
+                current.copy(
+                    isSaving = false,
+                    statusMessage = "Remote list Groceries does not exist yet",
+                    pendingAction = CalDavPendingAction.CreateMissingList
+                )
+            ),
+            outcome
+        )
+    }
+
+    @Test
     fun `adding an item trims input and clears the field`() = runTest {
         viewModel.onInputValueChange("  Oats  ")
 

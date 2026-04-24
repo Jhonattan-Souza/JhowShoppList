@@ -12,14 +12,12 @@ import org.junit.Test
 class CalDavSyncExecutorTest {
     private val repository = FakeShoppingListRepository()
     private val planner = CalDavSyncPlanner()
-    private val mapper = VTodoMapper()
 
     @Test
     fun `execute does not call markItemsSynced`() = runTest {
         val executor = CalDavSyncExecutor(
             repository = repository,
             planner = planner,
-            mapper = mapper,
             discoveryService = FakeDiscoveryService()
         )
         repository.seedItems(
@@ -43,7 +41,6 @@ class CalDavSyncExecutorTest {
         val executor = CalDavSyncExecutor(
             repository = repository,
             planner = planner,
-            mapper = mapper,
             discoveryService = FakeDiscoveryService(
                 remoteItems = listOf(
                     RemoteShoppingItemSnapshot(

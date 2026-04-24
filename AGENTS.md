@@ -15,6 +15,7 @@ Android Kotlin shopping-list app built with Jetpack Compose, Room, Hilt, and Cle
 | Full coverage report (unit + instrumented) | `./gradlew jacocoFullReport` |
 | Verify coverage threshold (>= 85%) | `./gradlew verifyDebugCoverage` |
 | Lint check | `./gradlew lintDebug` |
+| Run Detekt static analysis | `./gradlew detekt` |
 | Deploy debug app to phone | `./scripts/deploy-debug.sh --launch` |
 | Deploy release app to phone | `./scripts/deploy-release.sh --launch` |
 

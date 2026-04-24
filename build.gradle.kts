@@ -7,6 +7,15 @@ plugins {
     alias(libs.plugins.hilt.android) apply false
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.detekt) apply false
+    alias(libs.plugins.ben.manes.versions)
+    alias(libs.plugins.version.catalog.update)
+}
+
+// Prevent versionCatalogUpdate from stripping versions referenced only via libs.versions.xxx.get()
+versionCatalogUpdate {
+    keep {
+        keepUnusedVersions = true
+    }
 }
 
 subprojects {
@@ -15,6 +24,7 @@ subprojects {
         config.setFrom("$rootDir/config/detekt/detekt.yml")
         buildUponDefaultConfig = true
         allRules = false
+        source.setFrom("$projectDir/src/main")
     }
 
     tasks.withType<JavaCompile>().configureEach {

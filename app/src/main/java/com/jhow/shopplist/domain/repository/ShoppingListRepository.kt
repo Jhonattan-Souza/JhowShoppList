@@ -5,6 +5,9 @@ import com.jhow.shopplist.domain.model.ShoppingItem
 import com.jhow.shopplist.domain.model.ShoppingItemSyncResult
 import kotlinx.coroutines.flow.Flow
 
+// This is the single shopping-list aggregate boundary used by the existing use cases.
+// Splitting it only to satisfy a method-count threshold would spread one repository contract across multiple interfaces.
+@Suppress("TooManyFunctions")
 interface ShoppingListRepository {
     fun observePendingItems(): Flow<List<ShoppingItem>>
 

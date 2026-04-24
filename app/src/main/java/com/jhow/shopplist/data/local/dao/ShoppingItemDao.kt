@@ -10,6 +10,8 @@ import com.jhow.shopplist.domain.model.ShoppingItemSyncResult
 import kotlinx.coroutines.flow.Flow
 
 @Dao
+// Room keeps one table contract readable when its query/update operations stay together on one DAO.
+@Suppress("TooManyFunctions")
 interface ShoppingItemDao {
     @Query(
         """
@@ -142,6 +144,8 @@ interface ShoppingItemDao {
         WHERE id = :id
         """
     )
+    // This update maps directly to the synced SQL columns, so explicit parameters stay clearer than a wrapper object here.
+    @Suppress("LongParameterList")
     suspend fun markItemSynced(
         id: String,
         serverUpdatedAt: Long,

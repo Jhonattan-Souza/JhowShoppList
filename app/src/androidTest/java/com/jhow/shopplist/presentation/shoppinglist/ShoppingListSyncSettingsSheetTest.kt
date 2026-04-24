@@ -38,22 +38,9 @@ class ShoppingListSyncSettingsSheetTest {
                         syncState = CalDavSyncState.AuthError
                     )
                 ),
-                onInputValueChange = {},
-                onAddItem = {},
-                onSuggestionSelected = {},
-                onPendingItemClick = {},
-                onPurchasedItemClick = {},
-                onPurchaseSelectedItems = {},
-                onDeleteItemRequested = {},
-                onDeleteItemDismissed = {},
-                onDeleteItemConfirmed = {},
-                onSyncMenuClicked = {},
-                onSyncMenuDismissed = {},
-                onSyncSettingsRequested = {},
-                onSyncSettingsDismissed = {},
-                onSyncSettingsSaved = {},
-                onSyncNowRequested = {},
-                onConfirmCreateMissingList = {}
+                inputCallbacks = ShoppingListInputCallbacks(),
+                itemCallbacks = ShoppingListItemCallbacks(),
+                syncCallbacks = ShoppingListSyncCallbacks()
             )
         }
 
@@ -76,22 +63,9 @@ class ShoppingListSyncSettingsSheetTest {
                     isSyncSettingsVisible = true,
                     syncSettings = ShoppingListSyncSettingsUiState()
                 ),
-                onInputValueChange = {},
-                onAddItem = {},
-                onSuggestionSelected = {},
-                onPendingItemClick = {},
-                onPurchasedItemClick = {},
-                onPurchaseSelectedItems = {},
-                onDeleteItemRequested = {},
-                onDeleteItemDismissed = {},
-                onDeleteItemConfirmed = {},
-                onSyncMenuClicked = {},
-                onSyncMenuDismissed = {},
-                onSyncSettingsRequested = {},
-                onSyncSettingsDismissed = {},
-                onSyncSettingsSaved = {},
-                onSyncNowRequested = {},
-                onConfirmCreateMissingList = {}
+                inputCallbacks = ShoppingListInputCallbacks(),
+                itemCallbacks = ShoppingListItemCallbacks(),
+                syncCallbacks = ShoppingListSyncCallbacks()
             )
         }
 
@@ -112,22 +86,9 @@ class ShoppingListSyncSettingsSheetTest {
                     isSyncSettingsVisible = true,
                     syncSettings = ShoppingListSyncSettingsUiState(password = "secret")
                 ),
-                onInputValueChange = {},
-                onAddItem = {},
-                onSuggestionSelected = {},
-                onPendingItemClick = {},
-                onPurchasedItemClick = {},
-                onPurchaseSelectedItems = {},
-                onDeleteItemRequested = {},
-                onDeleteItemDismissed = {},
-                onDeleteItemConfirmed = {},
-                onSyncMenuClicked = {},
-                onSyncMenuDismissed = {},
-                onSyncSettingsRequested = {},
-                onSyncSettingsDismissed = {},
-                onSyncSettingsSaved = {},
-                onSyncNowRequested = {},
-                onConfirmCreateMissingList = {}
+                inputCallbacks = ShoppingListInputCallbacks(),
+                itemCallbacks = ShoppingListItemCallbacks(),
+                syncCallbacks = ShoppingListSyncCallbacks()
             )
         }
 
@@ -163,27 +124,15 @@ class ShoppingListSyncSettingsSheetTest {
         composeRule.setContent {
             ShoppingListScreen(
                 uiState = uiState,
-                onInputValueChange = {},
-                onAddItem = {},
-                onSuggestionSelected = {},
-                onPendingItemClick = {},
-                onPurchasedItemClick = {},
-                onPurchaseSelectedItems = {},
-                onDeleteItemRequested = {},
-                onDeleteItemDismissed = {},
-                onDeleteItemConfirmed = {},
-                onSyncMenuClicked = {},
-                onSyncMenuDismissed = {},
-                onSyncSettingsRequested = {},
-                onSyncSettingsDismissed = {},
-                onSyncSettingsSaved = {},
-                onSyncNowRequested = {},
-                onConfirmCreateMissingList = {},
-                onSyncServerUrlChanged = { url ->
-                    uiState = uiState.copy(
-                        syncSettings = uiState.syncSettings.copy(serverUrl = url)
-                    )
-                }
+                inputCallbacks = ShoppingListInputCallbacks(),
+                itemCallbacks = ShoppingListItemCallbacks(),
+                syncCallbacks = ShoppingListSyncCallbacks(
+                    onSyncServerUrlChanged = { url ->
+                        uiState = uiState.copy(
+                            syncSettings = uiState.syncSettings.copy(serverUrl = url)
+                        )
+                    }
+                )
             )
         }
 
@@ -223,22 +172,9 @@ class ShoppingListSyncSettingsSheetTest {
                         statusMessage = "Connection timed out"
                     )
                 ),
-                onInputValueChange = {},
-                onAddItem = {},
-                onSuggestionSelected = {},
-                onPendingItemClick = {},
-                onPurchasedItemClick = {},
-                onPurchaseSelectedItems = {},
-                onDeleteItemRequested = {},
-                onDeleteItemDismissed = {},
-                onDeleteItemConfirmed = {},
-                onSyncMenuClicked = {},
-                onSyncMenuDismissed = {},
-                onSyncSettingsRequested = {},
-                onSyncSettingsDismissed = {},
-                onSyncSettingsSaved = {},
-                onSyncNowRequested = {},
-                onConfirmCreateMissingList = {}
+                inputCallbacks = ShoppingListInputCallbacks(),
+                itemCallbacks = ShoppingListItemCallbacks(),
+                syncCallbacks = ShoppingListSyncCallbacks()
             )
         }
 
@@ -258,22 +194,9 @@ class ShoppingListSyncSettingsSheetTest {
                     isSyncSettingsVisible = true,
                     syncSettings = ShoppingListSyncSettingsUiState(hasStoredPassword = true)
                 ),
-                onInputValueChange = {},
-                onAddItem = {},
-                onSuggestionSelected = {},
-                onPendingItemClick = {},
-                onPurchasedItemClick = {},
-                onPurchaseSelectedItems = {},
-                onDeleteItemRequested = {},
-                onDeleteItemDismissed = {},
-                onDeleteItemConfirmed = {},
-                onSyncMenuClicked = {},
-                onSyncMenuDismissed = {},
-                onSyncSettingsRequested = {},
-                onSyncSettingsDismissed = {},
-                onSyncSettingsSaved = {},
-                onSyncNowRequested = {},
-                onConfirmCreateMissingList = {}
+                inputCallbacks = ShoppingListInputCallbacks(),
+                itemCallbacks = ShoppingListItemCallbacks(),
+                syncCallbacks = ShoppingListSyncCallbacks()
             )
         }
 
@@ -308,22 +231,9 @@ class ShoppingListSyncSettingsSheetTest {
                         pendingAction = CalDavPendingAction.CreateMissingList
                     )
                 ),
-                onInputValueChange = {},
-                onAddItem = {},
-                onSuggestionSelected = {},
-                onPendingItemClick = {},
-                onPurchasedItemClick = {},
-                onPurchaseSelectedItems = {},
-                onDeleteItemRequested = {},
-                onDeleteItemDismissed = {},
-                onDeleteItemConfirmed = {},
-                onSyncMenuClicked = {},
-                onSyncMenuDismissed = {},
-                onSyncSettingsRequested = {},
-                onSyncSettingsDismissed = {},
-                onSyncSettingsSaved = {},
-                onSyncNowRequested = {},
-                onConfirmCreateMissingList = {}
+                inputCallbacks = ShoppingListInputCallbacks(),
+                itemCallbacks = ShoppingListItemCallbacks(),
+                syncCallbacks = ShoppingListSyncCallbacks()
             )
         }
 
@@ -342,22 +252,11 @@ class ShoppingListSyncSettingsSheetTest {
                         pendingAction = CalDavPendingAction.CreateMissingList
                     )
                 ),
-                onInputValueChange = {},
-                onAddItem = {},
-                onSuggestionSelected = {},
-                onPendingItemClick = {},
-                onPurchasedItemClick = {},
-                onPurchaseSelectedItems = {},
-                onDeleteItemRequested = {},
-                onDeleteItemDismissed = {},
-                onDeleteItemConfirmed = {},
-                onSyncMenuClicked = {},
-                onSyncMenuDismissed = {},
-                onSyncSettingsRequested = {},
-                onSyncSettingsDismissed = {},
-                onSyncSettingsSaved = {},
-                onSyncNowRequested = {},
-                onConfirmCreateMissingList = { createClicked = true }
+                inputCallbacks = ShoppingListInputCallbacks(),
+                itemCallbacks = ShoppingListItemCallbacks(),
+                syncCallbacks = ShoppingListSyncCallbacks(
+                    onConfirmCreateMissingList = { createClicked = true }
+                )
             )
         }
 
