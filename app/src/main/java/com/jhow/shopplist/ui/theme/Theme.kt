@@ -5,7 +5,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 
 private val DarkColorScheme = darkColorScheme(
     primary = WheatGold,
@@ -18,7 +17,7 @@ private val DarkColorScheme = darkColorScheme(
     surface = Charcoal,
     onSurface = Cream,
     surfaceContainerLow = Slate,
-    secondaryContainer = SpruceGreen,
+    secondaryContainer = MossGreen,
     onSecondaryContainer = Cream,
     outline = Fog
 )
@@ -34,12 +33,14 @@ private val LightColorScheme = lightColorScheme(
     surface = Cream,
     onSurface = Charcoal,
     surfaceContainerLow = Fog,
-    secondaryContainer = Color(LIGHT_SECONDARY_CONTAINER_HEX),
-    onSecondaryContainer = Charcoal,
+    secondaryContainer = MossGreen,
+    onSecondaryContainer = Cream,
     outline = Slate
 )
 
-private const val LIGHT_SECONDARY_CONTAINER_HEX = 0xFFD6E4DA
+internal fun lightColorScheme() = LightColorScheme
+
+internal fun darkColorScheme() = DarkColorScheme
 
 @Composable
 fun JhowShoppListTheme(
