@@ -1,0 +1,53 @@
+# Detekt config — builds upon Detekt defaults (buildUponDefaultConfig = true).
+# Only rules that differ from the defaults are listed here.
+
+complexity:
+  active: true
+  CyclomaticComplexMethod:
+    active: true
+    threshold: 10
+    ignoreSingleWhenExpression: true   # sealed-class when() is idiomatic, not a smell
+    ignoreSimpleWhenEntries: true
+  CognitiveComplexity:
+    active: true
+    threshold: 15                      # aligns with SonarQube default
+  LongMethod:
+    active: true
+    threshold: 60                      # relaxed for Compose UI functions
+  LongParameterList:
+    active: true
+    threshold: 7
+    ignoreDefaultParameters: true      # Compose composables use many @DefaultValue params
+  TooManyFunctions:
+    active: true
+    thresholdInFiles: 20
+    thresholdInClasses: 15
+    thresholdInInterfaces: 10
+    thresholdInObjects: 10
+    thresholdInEnums: 5
+
+naming:
+  active: true
+  FunctionNaming:
+    active: true
+    functionPattern: '[a-zA-Z][a-zA-Z0-9]*'   # allows PascalCase
+    ignoreAnnotated: ['Composable']             # @Composable functions must be PascalCase
+
+style:
+  active: true
+  MagicNumber:
+    active: true
+    ignoreNumbers: ["-1", "0", "1", "2"]
+    ignoreConstantDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+    ignoreEnums: true
+    ignoreRanges: false
+
+potential-bugs:
+  active: true
+
+coroutines:
+  active: true   # catches GlobalScope usage, RedundantSuspendModifier, etc.
+
+exceptions:
+  active: true
