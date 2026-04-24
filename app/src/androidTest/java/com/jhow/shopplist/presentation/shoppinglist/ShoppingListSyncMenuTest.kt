@@ -31,6 +31,7 @@ class ShoppingListSyncMenuTest {
                 )
             )
         }
+        composeRule.waitForIdle()
 
         assertTrue(
             composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_NOW_MENU_ITEM).fetchSemanticsNodes().isNotEmpty()

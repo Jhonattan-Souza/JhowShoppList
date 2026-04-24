@@ -62,6 +62,7 @@ class ShoppingListScreenTest {
 
         composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-apples")).performClick()
         composeRule.onNodeWithTag(ShoppingListTestTags.PURCHASE_SELECTED_FAB).performClick()
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.purchasedItem("pending-apples")).fetchSemanticsNodes().isNotEmpty()
@@ -78,6 +79,7 @@ class ShoppingListScreenTest {
     @Test
     fun clickingPurchasedItemRestoresItToPendingSection() {
         composeRule.onNodeWithTag(ShoppingListTestTags.purchasedItem("purchased-coffee")).performClick()
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("purchased-coffee")).fetchSemanticsNodes().isNotEmpty()
@@ -90,6 +92,7 @@ class ShoppingListScreenTest {
 
     @Test
     fun shoppingRowsUseCompactSingleLineHeight() {
+        composeRule.waitForIdle()
         val maxCompactRowHeight = with(composeRule.density) { 64.dp.toPx() }
         val heightTolerance = with(composeRule.density) { 1.dp.toPx() }
 
@@ -106,6 +109,7 @@ class ShoppingListScreenTest {
     fun bulkActionFabFloatsAboveExpandedInputComposer() {
         composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-apples")).performClick()
         composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("co")
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.PURCHASE_SELECTED_FAB).fetchSemanticsNodes().isNotEmpty() &&
@@ -122,6 +126,7 @@ class ShoppingListScreenTest {
     fun addingItemFromInputShowsItInPendingList() {
         composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("Yogurt")
         composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performImeAction()
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithText("Yogurt").fetchSemanticsNodes().isNotEmpty()
@@ -134,17 +139,20 @@ class ShoppingListScreenTest {
     fun addingItemFromInputKeepsInputFocusedForContinuousEntry() {
         composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("Yogurt")
         composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performImeAction()
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithText("Yogurt").fetchSemanticsNodes().isNotEmpty()
         }
 
+        composeRule.waitForIdle()
         composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).assertIsFocused()
     }
 
     @Test
     fun typingShowsSuggestionDropdownWithMatchingItems() {
         composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("co")
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.SUGGESTION_LIST).fetchSemanticsNodes().isNotEmpty()
@@ -161,6 +169,7 @@ class ShoppingListScreenTest {
     @Test
     fun typingAccentlessQueryShowsAccentedSuggestion() {
         composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("cafe")
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.suggestionItem("Café")).fetchSemanticsNodes().isNotEmpty()
@@ -174,6 +183,7 @@ class ShoppingListScreenTest {
     @Test
     fun typingFuzzyQueryShowsSubsequenceSuggestion() {
         composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("hme")
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.suggestionItem("Home")).fetchSemanticsNodes().isNotEmpty()
@@ -187,6 +197,7 @@ class ShoppingListScreenTest {
     @Test
     fun overflowingSuggestionListKeepsTopMatchesVisibleNearestTheKeyboard() {
         composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("co")
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.suggestionItem("Coffee")).fetchSemanticsNodes().isNotEmpty() &&
@@ -205,12 +216,14 @@ class ShoppingListScreenTest {
     @Test
     fun tappingSuggestionReclaimsTheItem() {
         composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("co")
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.suggestionItem("Coffee")).fetchSemanticsNodes().isNotEmpty()
         }
 
         composeRule.onNodeWithTag(ShoppingListTestTags.suggestionItem("Coffee")).performClick()
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("purchased-coffee")).fetchSemanticsNodes().isNotEmpty()
@@ -224,23 +237,27 @@ class ShoppingListScreenTest {
     @Test
     fun tappingSuggestionKeepsInputFocusedForContinuousEntry() {
         composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("co")
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.suggestionItem("Coffee")).fetchSemanticsNodes().isNotEmpty()
         }
 
         composeRule.onNodeWithTag(ShoppingListTestTags.suggestionItem("Coffee")).performClick()
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("purchased-coffee")).fetchSemanticsNodes().isNotEmpty()
         }
 
+        composeRule.waitForIdle()
         composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).assertIsFocused()
     }
 
     @Test
     fun duplicatePendingSuggestionSelectionDoesNotCreateDuplicate() {
         composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("ap")
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.suggestionItem("Apples")).fetchSemanticsNodes().isNotEmpty()
@@ -258,12 +275,14 @@ class ShoppingListScreenTest {
     @Test
     fun accentInsensitiveSuggestionSelectionReclaimsTheItem() {
         composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("cafe")
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.suggestionItem("Café")).fetchSemanticsNodes().isNotEmpty()
         }
 
         composeRule.onNodeWithTag(ShoppingListTestTags.suggestionItem("Café")).performClick()
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("purchased-cafe")).fetchSemanticsNodes().isNotEmpty()
@@ -279,12 +298,14 @@ class ShoppingListScreenTest {
         composeRule.onNodeWithTag(ShoppingListTestTags.swipePendingItem("pending-apples")).performTouchInput {
             swipeLeft()
         }
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.DELETE_ITEM_DIALOG).fetchSemanticsNodes().isNotEmpty()
         }
 
         composeRule.onNodeWithText("Delete").performClick()
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("pending-apples")).fetchSemanticsNodes().isEmpty()
@@ -300,12 +321,14 @@ class ShoppingListScreenTest {
         composeRule.onNodeWithTag(ShoppingListTestTags.swipePurchasedItem("purchased-coffee")).performTouchInput {
             swipeLeft()
         }
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.DELETE_ITEM_DIALOG).fetchSemanticsNodes().isNotEmpty()
         }
 
         composeRule.onNodeWithText("Delete").performClick()
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.purchasedItem("purchased-coffee")).fetchSemanticsNodes().isEmpty()
@@ -324,12 +347,14 @@ class ShoppingListScreenTest {
         composeRule.onNodeWithTag(ShoppingListTestTags.swipePendingItem("pending-bread")).performTouchInput {
             swipeLeft()
         }
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.DELETE_ITEM_DIALOG).fetchSemanticsNodes().isNotEmpty()
         }
 
         composeRule.onNodeWithText("Cancel").performClick()
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.DELETE_ITEM_DIALOG).fetchSemanticsNodes().isEmpty()
@@ -350,7 +375,9 @@ class ShoppingListScreenTest {
     @Test
     fun overflowMenuOpensSyncSettingsSheet() {
         composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_MENU_BUTTON).performClick()
+        composeRule.waitForIdle()
         composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_SETTINGS_MENU_ITEM).performClick()
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_SETTINGS_SHEET).fetchSemanticsNodes().isNotEmpty()
@@ -370,7 +397,9 @@ class ShoppingListScreenTest {
     @Test
     fun syncSettingsSheetShowsEnableToggleAndCurrentSyncState() {
         composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_MENU_BUTTON).performClick()
+        composeRule.waitForIdle()
         composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_SETTINGS_MENU_ITEM).performClick()
+        composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_SETTINGS_SHEET).fetchSemanticsNodes().isNotEmpty()

@@ -43,6 +43,7 @@ class ShoppingListSyncSettingsSheetTest {
                 syncCallbacks = ShoppingListSyncCallbacks()
             )
         }
+        composeRule.waitForIdle()
 
         assertTrue(
             composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_SETTINGS_SHEET).fetchSemanticsNodes().isNotEmpty()
@@ -68,6 +69,7 @@ class ShoppingListSyncSettingsSheetTest {
                 syncCallbacks = ShoppingListSyncCallbacks()
             )
         }
+        composeRule.waitForIdle()
 
         val nodes = composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_SETTINGS_SHEET_CONTENT)
             .fetchSemanticsNodes()
@@ -91,6 +93,7 @@ class ShoppingListSyncSettingsSheetTest {
                 syncCallbacks = ShoppingListSyncCallbacks()
             )
         }
+        composeRule.waitForIdle()
 
         val passwordNodes = composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_PASSWORD_FIELD)
             .fetchSemanticsNodes()
@@ -135,6 +138,7 @@ class ShoppingListSyncSettingsSheetTest {
                 )
             )
         }
+        composeRule.waitForIdle()
 
         composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_SERVER_FIELD)
             .performTextClearance()
@@ -177,6 +181,7 @@ class ShoppingListSyncSettingsSheetTest {
                 syncCallbacks = ShoppingListSyncCallbacks()
             )
         }
+        composeRule.waitForIdle()
 
         assertTrue(
             composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_STATUS_TEXT).fetchSemanticsNodes().isNotEmpty()
@@ -199,6 +204,7 @@ class ShoppingListSyncSettingsSheetTest {
                 syncCallbacks = ShoppingListSyncCallbacks()
             )
         }
+        composeRule.waitForIdle()
 
         val passwordNode = composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_PASSWORD_FIELD)
             .fetchSemanticsNode()
@@ -236,6 +242,7 @@ class ShoppingListSyncSettingsSheetTest {
                 syncCallbacks = ShoppingListSyncCallbacks()
             )
         }
+        composeRule.waitForIdle()
 
         composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_PROGRESS_INDICATOR).assertExists()
         composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_CREATE_LIST_BUTTON).assertExists()
@@ -259,6 +266,7 @@ class ShoppingListSyncSettingsSheetTest {
                 )
             )
         }
+        composeRule.waitForIdle()
 
         assertTrue(
             composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_CREATE_LIST_BUTTON).fetchSemanticsNodes().isNotEmpty()
