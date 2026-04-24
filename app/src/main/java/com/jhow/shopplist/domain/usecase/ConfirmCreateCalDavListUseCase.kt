@@ -1,15 +1,19 @@
 package com.jhow.shopplist.domain.usecase
 
+import com.jhow.shopplist.core.dispatchers.IoDispatcher
 import com.jhow.shopplist.data.sync.CalDavDiscoveryService
 import com.jhow.shopplist.data.sync.CalDavAuthenticationException
 import com.jhow.shopplist.domain.model.CalDavValidationResult
 import com.jhow.shopplist.domain.sync.CalDavConfigRepository
 import java.util.concurrent.CancellationException
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 
 open class ConfirmCreateCalDavListUseCase @Inject constructor(
     private val repository: CalDavConfigRepository,
-    private val discoveryService: CalDavDiscoveryService
+    private val discoveryService: CalDavDiscoveryService,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     open suspend operator fun invoke(
         serverUrl: String,
@@ -29,12 +33,14 @@ open class ConfirmCreateCalDavListUseCase @Inject constructor(
         }
 
         return try {
-            val href = discoveryService.createTaskCollection(
-                serverUrl = serverUrl,
-                username = username,
-                password = resolvedPassword,
-                listName = listName
-            )
+            val href = withContext(ioDispatcher) {
+                discoveryService.createTaskCollection(
+                    serverUrl = serverUrl,
+                    username = username,
+                    password = resolvedPassword,
+                    listName = listName
+                )
+            }
             CalDavValidationResult.Success(href)
         } catch (exception: CancellationException) {
             throw exception

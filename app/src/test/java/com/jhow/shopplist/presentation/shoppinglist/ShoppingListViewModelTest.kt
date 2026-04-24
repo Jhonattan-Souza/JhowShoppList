@@ -24,6 +24,7 @@ import com.jhow.shopplist.testing.FakeShoppingListRepository
 import com.jhow.shopplist.testing.FakeShoppingSyncScheduler
 import com.jhow.shopplist.testing.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -577,8 +578,16 @@ class ShoppingListViewModelTest {
                     password: String,
                     listName: String
                 ): String = error("Not used")
+
+                override suspend fun fetchTaskItems(
+                    serverUrl: String,
+                    username: String,
+                    password: String,
+                    collectionHref: String
+                ) = emptyList<com.jhow.shopplist.domain.model.RemoteShoppingItemSnapshot>()
             }
-        )
+        ),
+        ioDispatcher = UnconfinedTestDispatcher()
     ) {
         var nextResult: CalDavValidationResult = CalDavValidationResult.Success()
         var callCount: Int = 0
@@ -611,7 +620,15 @@ class ShoppingListViewModelTest {
                 password: String,
                 listName: String
             ): String = error("Not used")
-        }
+
+            override suspend fun fetchTaskItems(
+                serverUrl: String,
+                username: String,
+                password: String,
+                collectionHref: String
+            ) = emptyList<com.jhow.shopplist.domain.model.RemoteShoppingItemSnapshot>()
+        },
+        ioDispatcher = UnconfinedTestDispatcher()
     ) {
         var nextResult: CalDavValidationResult = CalDavValidationResult.Success()
         var callCount: Int = 0

@@ -55,7 +55,12 @@ class CalDavShoppingSyncGateway @Inject constructor(
                 }
                 configRepository.setResolvedCollectionUrl(href)
                 configRepository.setCreateListRequested(false)
-                executor.execute(collectionHref = href)
+                executor.execute(
+                    serverUrl = config.serverUrl,
+                    username = config.username,
+                    password = password,
+                    collectionHref = href
+                )
             } else {
                 CalDavSyncOutcome.UserActionRequired(
                     message = "Remote list ${config.listName} is missing",
@@ -67,7 +72,12 @@ class CalDavShoppingSyncGateway @Inject constructor(
             )
             is CalDavListLocator.Result.Found -> {
                 configRepository.setResolvedCollectionUrl(located.href)
-                executor.execute(collectionHref = located.href)
+                executor.execute(
+                    serverUrl = config.serverUrl,
+                    username = config.username,
+                    password = password,
+                    collectionHref = located.href
+                )
             }
         }
     }

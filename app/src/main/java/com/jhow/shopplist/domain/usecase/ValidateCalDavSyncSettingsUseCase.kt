@@ -1,15 +1,19 @@
 package com.jhow.shopplist.domain.usecase
 
+import com.jhow.shopplist.core.dispatchers.IoDispatcher
 import com.jhow.shopplist.data.sync.CalDavListLocator
 import com.jhow.shopplist.data.sync.CalDavAuthenticationException
 import com.jhow.shopplist.domain.model.CalDavValidationResult
 import com.jhow.shopplist.domain.sync.CalDavConfigRepository
 import java.util.concurrent.CancellationException
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 
 open class ValidateCalDavSyncSettingsUseCase @Inject constructor(
     private val configRepository: CalDavConfigRepository,
-    private val listLocator: CalDavListLocator
+    private val listLocator: CalDavListLocator,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     open suspend operator fun invoke(
         enabled: Boolean,
@@ -34,14 +38,14 @@ open class ValidateCalDavSyncSettingsUseCase @Inject constructor(
         }
 
         return try {
-            when (
-                val result = listLocator.locate(
+            when (val result = withContext(ioDispatcher) {
+                listLocator.locate(
                     serverUrl = serverUrl,
                     username = username,
                     password = resolvedPassword,
                     listName = listName
                 )
-            ) {
+            }) {
                 is CalDavListLocator.Result.Found -> {
                     CalDavValidationResult.Success(resolvedCollectionUrl = result.href)
                 }
