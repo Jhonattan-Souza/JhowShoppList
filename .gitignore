@@ -32,6 +32,24 @@ render.experimental.xml
 *.keystore
 google-services.json
 *.hprof
+
+# Local secrets and credentials
+.env
+.env.*
+*.pem
+*.p12
+*.pfx
+*.cer
+*.crt
+*.der
+*.key
+*.asc
+*.gpg
+credentials.json
+service-account*.json
+secrets.properties
+secrets.*.properties
+
 .agents
 skills-lock.json
 .opencode
