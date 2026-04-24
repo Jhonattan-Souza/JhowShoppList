@@ -165,7 +165,7 @@ class ShoppingListViewModel @Inject constructor(
         }
     }
 
-    fun onDeleteItemRequested(item: com.jhow.shopplist.domain.model.ShoppingItem) {
+    fun onDeleteItemRequested(item: ShoppingItem) {
         itemPendingDeletion.value = item
     }
 
