@@ -133,7 +133,7 @@ build_verification() {
     printf 'apksigner verify failed for %s:\n%s\n' "$apk_path" "$certs_output" >&2
     exit 1
   fi
-  digest="$(printf '%s\n' "$certs_output" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1)"
+  digest="$(printf '%s\n' "$certs_output" | sed -n 's/^.*certificate SHA-256 digest: //p' | head -n 1)"
 
   if [[ -z "$digest" ]]; then
     printf 'Unable to extract SHA-256 digest from %s\n' "$apk_path" >&2
