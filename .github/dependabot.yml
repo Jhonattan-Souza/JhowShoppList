@@ -1,0 +1,40 @@
+# Dependabot keeps SHA-pinned GitHub Actions and Gradle dependencies updated.
+# Without it, pinned SHAs never receive security patches.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "build"
+    labels:
+      - "dependencies"
+      - "gradle"
+    open-pull-requests-limit: 5
+    # Group non-breaking updates together so the PR queue stays manageable.
+    groups:
+      androidx:
+        patterns:
+          - "androidx.*"
+      kotlin-and-compose:
+        patterns:
+          - "org.jetbrains.kotlin*"
+          - "androidx.compose*"
+      test-dependencies:
+        patterns:
+          - "junit*"
+          - "org.mockito*"
+          - "app.cash.turbine*"
+          - "io.mockk*"
