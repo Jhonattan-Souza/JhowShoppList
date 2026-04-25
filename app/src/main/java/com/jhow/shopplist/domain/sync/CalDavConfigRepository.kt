@@ -32,6 +32,8 @@ interface CalDavConfigRepository {
         newPassword: String?
     )
 
+    suspend fun clearConfig()
+
     suspend fun updateSyncState(
         state: CalDavSyncState,
         message: String?,

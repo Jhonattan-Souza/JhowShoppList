@@ -372,46 +372,7 @@ class ShoppingListScreenTest {
         assertTrue(abs(restoredLeft - initialLeft) <= tolerance)
     }
 
-    @Test
-    fun overflowMenuOpensSyncSettingsSheet() {
-        composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_MENU_BUTTON).performClick()
-        composeRule.waitForIdle()
-        composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_SETTINGS_MENU_ITEM).performClick()
-        composeRule.waitForIdle()
 
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_SETTINGS_SHEET).fetchSemanticsNodes().isNotEmpty()
-        }
-
-        assertTrue(
-            composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_SETTINGS_SHEET).fetchSemanticsNodes().isNotEmpty()
-        )
-        assertTrue(
-            composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_SERVER_FIELD).fetchSemanticsNodes().isNotEmpty()
-        )
-        assertTrue(
-            composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_LIST_NAME_FIELD).fetchSemanticsNodes().isNotEmpty()
-        )
-    }
-
-    @Test
-    fun syncSettingsSheetShowsEnableToggleAndCurrentSyncState() {
-        composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_MENU_BUTTON).performClick()
-        composeRule.waitForIdle()
-        composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_SETTINGS_MENU_ITEM).performClick()
-        composeRule.waitForIdle()
-
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_SETTINGS_SHEET).fetchSemanticsNodes().isNotEmpty()
-        }
-
-        assertTrue(
-            composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_ENABLED_SWITCH).fetchSemanticsNodes().isNotEmpty()
-        )
-        assertTrue(
-            composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_STATE_TEXT).fetchSemanticsNodes().isNotEmpty()
-        )
-    }
 
     private fun sampleItems(): List<ShoppingItemEntity> = listOf(
         ShoppingItemEntity(

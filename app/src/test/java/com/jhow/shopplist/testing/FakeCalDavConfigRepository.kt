@@ -88,6 +88,23 @@ class FakeCalDavConfigRepository : CalDavConfigRepository {
         )
     }
 
+    override suspend fun clearConfig() = atomicWrite {
+        storedPassword = null
+        _config.value = CalDavSyncConfig(
+            enabled = false,
+            serverUrl = "",
+            username = "",
+            listName = "",
+            syncState = CalDavSyncState.Disabled,
+            statusMessage = null,
+            pendingAction = CalDavPendingAction.None,
+            lastSyncAt = null,
+            lastResolvedCollectionUrl = null,
+            createListRequested = false,
+            hasStoredPassword = false
+        )
+    }
+
     override suspend fun updateSyncState(
         state: CalDavSyncState,
         message: String?,

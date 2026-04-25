@@ -7,7 +7,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.jhow.shopplist.navigation.Routes
+import com.jhow.shopplist.presentation.caldavconfig.CalDavConfigRoute
 import com.jhow.shopplist.presentation.shoppinglist.ShoppingListRoute
 import com.jhow.shopplist.ui.theme.JhowShoppListTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -20,7 +24,26 @@ class MainActivity : ComponentActivity() {
         setContent {
             JhowShoppListTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    ShoppingListRoute(viewModel = hiltViewModel())
+                    val navController = rememberNavController()
+                    NavHost(
+                        navController = navController,
+                        startDestination = Routes.SHOPPING_LIST
+                    ) {
+                        composable(Routes.SHOPPING_LIST) {
+                            ShoppingListRoute(
+                                onNavigateToCalDavConfig = {
+                                    navController.navigate(Routes.CALDAV_CONFIG)
+                                }
+                            )
+                        }
+                        composable(Routes.CALDAV_CONFIG) {
+                            CalDavConfigRoute(
+                                onNavigateBack = {
+                                    navController.popBackStack()
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }
