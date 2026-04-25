@@ -8,6 +8,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -45,15 +49,19 @@ jobs:
         uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4
 
       - name: Restore release keystore
         env:
           JHOW_SHOPPLIST_RELEASE_STORE_FILE_BASE64: ${{ secrets.JHOW_SHOPPLIST_RELEASE_STORE_FILE_BASE64 }}
           JHOW_SHOPPLIST_RELEASE_STORE_PASSWORD: ${{ secrets.JHOW_SHOPPLIST_RELEASE_STORE_PASSWORD }}
+          JHOW_SHOPPLIST_RELEASE_KEY_ALIAS: ${{ secrets.JHOW_SHOPPLIST_RELEASE_KEY_ALIAS }}
+          JHOW_SHOPPLIST_RELEASE_KEY_PASSWORD: ${{ secrets.JHOW_SHOPPLIST_RELEASE_KEY_PASSWORD }}
         run: |
           # Mask every secret defensively in case a later step logs it.
           echo "::add-mask::$JHOW_SHOPPLIST_RELEASE_STORE_PASSWORD"
+          echo "::add-mask::$JHOW_SHOPPLIST_RELEASE_KEY_PASSWORD"
+          echo "::add-mask::$JHOW_SHOPPLIST_RELEASE_KEY_ALIAS"
 
           install -d -m 0700 "$RUNNER_TEMP/release-signing"
           keystore_path="$RUNNER_TEMP/release-signing/release.keystore"
