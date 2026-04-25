@@ -72,6 +72,24 @@ class DataStoreCalDavConfigRepository(
         }
     }
 
+    override suspend fun clearConfig() {
+        passwordStorage.clear()
+        dataStore.updateData { prefs ->
+            prefs.toMutablePreferences().apply {
+                remove(ENABLED)
+                remove(SERVER_URL)
+                remove(USERNAME)
+                remove(LIST_NAME)
+                remove(SYNC_STATE)
+                remove(PENDING_ACTION)
+                remove(STATUS_MESSAGE)
+                remove(LAST_SYNC_AT)
+                remove(LAST_RESOLVED_COLLECTION_URL)
+                remove(CREATE_LIST_REQUESTED)
+            }
+        }
+    }
+
     override suspend fun updateSyncState(
         state: CalDavSyncState,
         message: String?,

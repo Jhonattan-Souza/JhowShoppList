@@ -26,23 +26,18 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.material.icons.rounded.AddTask
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -50,13 +45,10 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Surface
@@ -92,8 +84,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jhow.shopplist.R
-import com.jhow.shopplist.domain.model.CalDavPendingAction
-import com.jhow.shopplist.domain.model.CalDavSyncState
 import com.jhow.shopplist.domain.model.ShoppingItem
 
 class ShoppingListInputCallbacks(
@@ -115,15 +105,7 @@ class ShoppingListSyncCallbacks(
     val onSyncMenuClicked: () -> Unit = {},
     val onSyncMenuDismissed: () -> Unit = {},
     val onSyncSettingsRequested: () -> Unit = {},
-    val onSyncSettingsDismissed: () -> Unit = {},
-    val onSyncSettingsSaved: () -> Unit = {},
-    val onSyncNowRequested: () -> Unit = {},
-    val onConfirmCreateMissingList: () -> Unit = {},
-    val onSyncEnabledChanged: (Boolean) -> Unit = {},
-    val onSyncServerUrlChanged: (String) -> Unit = {},
-    val onSyncUsernameChanged: (String) -> Unit = {},
-    val onSyncPasswordChanged: (String) -> Unit = {},
-    val onSyncListNameChanged: (String) -> Unit = {}
+    val onSyncNowRequested: () -> Unit = {}
 )
 
 private data class ShoppingItemRowVisuals(
@@ -183,6 +165,7 @@ private fun ShoppingListColorRole.resolve() = when (this) {
 
 @Composable
 fun ShoppingListRoute(
+    onNavigateToCalDavConfig: () -> Unit,
     viewModel: ShoppingListViewModel = hiltViewModel()
 ) {
     val uiState = viewModel.uiState.collectAsStateWithLifecycle()
@@ -207,16 +190,11 @@ fun ShoppingListRoute(
         ShoppingListSyncCallbacks(
             onSyncMenuClicked = viewModel::onSyncMenuClicked,
             onSyncMenuDismissed = viewModel::onSyncMenuDismissed,
-            onSyncSettingsRequested = viewModel::onSyncSettingsRequested,
-            onSyncSettingsDismissed = viewModel::onSyncSettingsDismissed,
-            onSyncSettingsSaved = viewModel::onSyncSettingsSaved,
-            onSyncNowRequested = viewModel::onSyncNowRequested,
-            onConfirmCreateMissingList = viewModel::onConfirmCreateMissingList,
-            onSyncEnabledChanged = viewModel::onSyncEnabledChanged,
-            onSyncServerUrlChanged = viewModel::onSyncServerUrlChanged,
-            onSyncUsernameChanged = viewModel::onSyncUsernameChanged,
-            onSyncPasswordChanged = viewModel::onSyncPasswordChanged,
-            onSyncListNameChanged = viewModel::onSyncListNameChanged
+            onSyncSettingsRequested = {
+                viewModel.onSyncSettingsRequested()
+                onNavigateToCalDavConfig()
+            },
+            onSyncNowRequested = viewModel::onSyncNowRequested
         )
     }
     ShoppingListScreen(
@@ -267,7 +245,6 @@ fun ShoppingListScreen(
             ),
             inputCallbacks = inputCallbacks,
             itemCallbacks = itemCallbacks,
-            syncCallbacks = syncCallbacks,
             onInputBarHeightChanged = { inputBarContentHeightPx = it }
         )
     }
@@ -279,7 +256,6 @@ private fun ShoppingListScreenContent(
     layout: ShoppingListContentLayout,
     inputCallbacks: ShoppingListInputCallbacks,
     itemCallbacks: ShoppingListItemCallbacks,
-    syncCallbacks: ShoppingListSyncCallbacks,
     onInputBarHeightChanged: (Int) -> Unit
 ) {
     Box(
@@ -314,13 +290,6 @@ private fun ShoppingListScreenContent(
         onDismiss = itemCallbacks.onDeleteItemDismissed,
         onConfirm = itemCallbacks.onDeleteItemConfirmed
     )
-
-    if (uiState.isSyncSettingsVisible) {
-        SyncSettingsSheet(
-            settings = uiState.syncSettings,
-            syncCallbacks = syncCallbacks
-        )
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -365,191 +334,7 @@ private fun ShoppingListTopAppBar(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun SyncSettingsSheet(
-    settings: ShoppingListSyncSettingsUiState,
-    syncCallbacks: ShoppingListSyncCallbacks
-) {
-    ModalBottomSheet(
-        onDismissRequest = syncCallbacks.onSyncSettingsDismissed,
-        modifier = Modifier.testTag(ShoppingListTestTags.SYNC_SETTINGS_SHEET)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
-                .testTag(ShoppingListTestTags.SYNC_SETTINGS_SHEET_CONTENT)
-        ) {
-            Text(
-                text = stringResource(R.string.sync_settings),
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
 
-            SyncSettingsEnabledRow(
-                enabled = settings.enabled,
-                isSaving = settings.isSaving,
-                onSyncEnabledChanged = syncCallbacks.onSyncEnabledChanged
-            )
-            SyncSettingsStateText(settings.syncState)
-            SyncSettingsFields(settings = settings, syncCallbacks = syncCallbacks)
-            SyncSettingsStatus(settings = settings, syncCallbacks = syncCallbacks)
-
-            Button(
-                onClick = syncCallbacks.onSyncSettingsSaved,
-                enabled = !settings.isSaving,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag(ShoppingListTestTags.SYNC_SAVE_BUTTON)
-            ) {
-                Text(stringResource(R.string.sync_save))
-            }
-        }
-    }
-}
-
-@Composable
-private fun SyncSettingsEnabledRow(
-    enabled: Boolean,
-    isSaving: Boolean,
-    onSyncEnabledChanged: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = stringResource(R.string.sync_enabled_label),
-            style = MaterialTheme.typography.bodyLarge
-        )
-        Switch(
-            checked = enabled,
-            onCheckedChange = onSyncEnabledChanged,
-            modifier = Modifier.testTag(ShoppingListTestTags.SYNC_ENABLED_SWITCH),
-            enabled = !isSaving
-        )
-    }
-}
-
-@Composable
-private fun SyncSettingsStateText(syncState: CalDavSyncState) {
-    Text(
-        text = stringResource(R.string.sync_state_label, syncStateLabel(syncState)),
-        style = MaterialTheme.typography.bodyMedium,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 8.dp)
-            .testTag(ShoppingListTestTags.SYNC_STATE_TEXT)
-    )
-}
-
-@Composable
-private fun SyncSettingsFields(
-    settings: ShoppingListSyncSettingsUiState,
-    syncCallbacks: ShoppingListSyncCallbacks
-) {
-    val fieldsEnabled = !settings.isSaving
-
-    OutlinedTextField(
-        value = settings.serverUrl,
-        onValueChange = syncCallbacks.onSyncServerUrlChanged,
-        label = { Text(stringResource(R.string.sync_server_label)) },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 8.dp)
-            .testTag(ShoppingListTestTags.SYNC_SERVER_FIELD),
-        singleLine = true,
-        enabled = fieldsEnabled
-    )
-
-    OutlinedTextField(
-        value = settings.username,
-        onValueChange = syncCallbacks.onSyncUsernameChanged,
-        label = { Text(stringResource(R.string.sync_username_label)) },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 8.dp)
-            .testTag(ShoppingListTestTags.SYNC_USERNAME_FIELD),
-        singleLine = true,
-        enabled = fieldsEnabled
-    )
-
-    OutlinedTextField(
-        value = settings.password,
-        onValueChange = syncCallbacks.onSyncPasswordChanged,
-        label = { Text(stringResource(R.string.sync_password_label)) },
-        placeholder = {
-            if (settings.hasStoredPassword && settings.password.isBlank()) {
-                Text(stringResource(R.string.sync_password_saved_placeholder))
-            }
-        },
-        visualTransformation = PasswordVisualTransformation(),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 8.dp)
-            .testTag(ShoppingListTestTags.SYNC_PASSWORD_FIELD),
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-        enabled = fieldsEnabled
-    )
-
-    OutlinedTextField(
-        value = settings.listName,
-        onValueChange = syncCallbacks.onSyncListNameChanged,
-        label = { Text(stringResource(R.string.sync_list_name_label)) },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 8.dp)
-            .testTag(ShoppingListTestTags.SYNC_LIST_NAME_FIELD),
-        singleLine = true,
-        enabled = fieldsEnabled
-    )
-}
-
-@Composable
-private fun SyncSettingsStatus(
-    settings: ShoppingListSyncSettingsUiState,
-    syncCallbacks: ShoppingListSyncCallbacks
-) {
-    if (settings.isSaving) {
-        LinearProgressIndicator(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 8.dp)
-                .testTag(ShoppingListTestTags.SYNC_PROGRESS_INDICATOR)
-        )
-    }
-
-    if (settings.statusMessage != null) {
-        Text(
-            text = settings.statusMessage,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.error,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 8.dp)
-                .testTag(ShoppingListTestTags.SYNC_STATUS_TEXT)
-        )
-    }
-
-    if (settings.pendingAction == CalDavPendingAction.CreateMissingList) {
-        Button(
-            onClick = syncCallbacks.onConfirmCreateMissingList,
-            enabled = !settings.isSaving,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 8.dp)
-                .testTag(ShoppingListTestTags.SYNC_CREATE_LIST_BUTTON)
-        ) {
-            Text(stringResource(R.string.sync_create_missing_list))
-        }
-    }
-}
 
 @Composable
 private fun ShoppingInputBar(
@@ -1035,16 +820,3 @@ private fun SwipeDeleteBackground(
     }
 }
 
-@Composable
-private fun syncStateLabel(state: CalDavSyncState): String = when (state) {
-    CalDavSyncState.Disabled -> stringResource(R.string.sync_state_disabled)
-    CalDavSyncState.Idle -> stringResource(R.string.sync_state_idle)
-    CalDavSyncState.Syncing -> stringResource(R.string.sync_state_syncing)
-    CalDavSyncState.Success -> stringResource(R.string.sync_state_success)
-    CalDavSyncState.AuthError -> stringResource(R.string.sync_state_auth_error)
-    CalDavSyncState.NetworkError -> stringResource(R.string.sync_state_network_error)
-    CalDavSyncState.MissingList -> stringResource(R.string.sync_state_missing_list)
-    CalDavSyncState.AmbiguousListName -> stringResource(R.string.sync_state_ambiguous_list_name)
-    CalDavSyncState.UserActionRequired -> stringResource(R.string.sync_state_user_action_required)
-    CalDavSyncState.Warning -> stringResource(R.string.sync_state_warning)
-}
