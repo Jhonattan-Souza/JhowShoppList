@@ -5,12 +5,15 @@ import com.jhow.shopplist.domain.model.ShoppingItem
 import com.jhow.shopplist.domain.model.SyncStatus
 import com.jhow.shopplist.domain.usecase.AddOrReclaimShoppingItemUseCase
 import com.jhow.shopplist.domain.usecase.DeleteShoppingItemUseCase
+import com.jhow.shopplist.domain.usecase.GetCalDavSyncConfigUseCase
 import com.jhow.shopplist.domain.usecase.MarkPurchasedItemPendingUseCase
 import com.jhow.shopplist.domain.usecase.MarkSelectedItemsPurchasedUseCase
 import com.jhow.shopplist.domain.usecase.ObserveItemNamesUseCase
 import com.jhow.shopplist.domain.usecase.ObservePendingItemsUseCase
 import com.jhow.shopplist.domain.usecase.ObservePurchasedItemsUseCase
+import com.jhow.shopplist.domain.usecase.ObserveSyncStateUseCase
 import com.jhow.shopplist.domain.usecase.RequestShoppingSyncUseCase
+import com.jhow.shopplist.testing.FakeCalDavConfigRepository
 import com.jhow.shopplist.testing.FakeShoppingListRepository
 import com.jhow.shopplist.testing.FakeShoppingSyncScheduler
 import com.jhow.shopplist.testing.MainDispatcherRule
@@ -18,6 +21,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -29,12 +34,14 @@ class ShoppingListViewModelTest {
 
     private lateinit var repository: FakeShoppingListRepository
     private lateinit var syncScheduler: FakeShoppingSyncScheduler
+    private lateinit var calDavConfigRepository: FakeCalDavConfigRepository
     private lateinit var viewModel: ShoppingListViewModel
 
     @Before
     fun setUp() {
         repository = FakeShoppingListRepository()
         syncScheduler = FakeShoppingSyncScheduler()
+        calDavConfigRepository = FakeCalDavConfigRepository()
         viewModel = ShoppingListViewModel(
             observePendingItemsUseCase = ObservePendingItemsUseCase(repository),
             observePurchasedItemsUseCase = ObservePurchasedItemsUseCase(repository),
@@ -43,7 +50,9 @@ class ShoppingListViewModelTest {
             deleteShoppingItemUseCase = DeleteShoppingItemUseCase(repository),
             markSelectedItemsPurchasedUseCase = MarkSelectedItemsPurchasedUseCase(repository),
             markPurchasedItemPendingUseCase = MarkPurchasedItemPendingUseCase(repository),
-            requestShoppingSyncUseCase = RequestShoppingSyncUseCase(syncScheduler)
+            requestShoppingSyncUseCase = RequestShoppingSyncUseCase(syncScheduler),
+            observeSyncStateUseCase = ObserveSyncStateUseCase(syncScheduler),
+            getCalDavSyncConfigUseCase = GetCalDavSyncConfigUseCase(calDavConfigRepository)
         )
     }
 
@@ -287,6 +296,79 @@ class ShoppingListViewModelTest {
             }
             assertEquals(listOf("bananas"), state.pendingItems.map { it.id })
             assertEquals(listOf("beans"), state.purchasedItems.map { it.id })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `isSyncing reflects scheduler observe sync state`() = runTest {
+        syncScheduler.setSyncing(true)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isSyncing)
+
+        syncScheduler.setSyncing(false)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isSyncing)
+    }
+
+    @Test
+    fun `isSyncConfigured is true when caldav is ready to sync`() = runTest {
+        calDavConfigRepository.seed(
+            enabled = true,
+            serverUrl = "https://example.com",
+            username = "user",
+            listName = "Shopping"
+        )
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isSyncConfigured)
+    }
+
+    @Test
+    fun `isSyncConfigured is false when caldav is not configured`() = runTest {
+        calDavConfigRepository.seed(enabled = false)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isSyncConfigured)
+    }
+
+    @Test
+    fun `onPullToRefresh when configured invokes sync`() = runTest {
+        calDavConfigRepository.seed(
+            enabled = true,
+            serverUrl = "https://example.com",
+            username = "user",
+            listName = "Shopping"
+        )
+        advanceUntilIdle()
+
+        viewModel.onPullToRefresh()
+        advanceUntilIdle()
+
+        assertEquals(1, syncScheduler.requestCount)
+    }
+
+    @Test
+    fun `onPullToRefresh when not configured does not invoke sync`() = runTest {
+        calDavConfigRepository.seed(enabled = false)
+        advanceUntilIdle()
+
+        viewModel.onPullToRefresh()
+        advanceUntilIdle()
+
+        assertEquals(0, syncScheduler.requestCount)
+    }
+
+    @Test
+    fun `onPullToRefresh when not configured emits SyncNotConfigured event`() = runTest {
+        calDavConfigRepository.seed(enabled = false)
+        advanceUntilIdle()
+
+        viewModel.uiEvents.test {
+            viewModel.onPullToRefresh()
+            assertEquals(ShoppingListUiEvent.SyncNotConfigured, awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
     }

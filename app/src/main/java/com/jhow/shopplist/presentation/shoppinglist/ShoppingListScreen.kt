@@ -35,11 +35,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AddTask
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -47,6 +45,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SwipeToDismissBox
@@ -54,6 +56,9 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -102,10 +107,8 @@ class ShoppingListItemCallbacks(
 )
 
 class ShoppingListSyncCallbacks(
-    val onSyncMenuClicked: () -> Unit = {},
-    val onSyncMenuDismissed: () -> Unit = {},
-    val onSyncSettingsRequested: () -> Unit = {},
-    val onSyncNowRequested: () -> Unit = {}
+    val onPullToRefresh: () -> Unit = {},
+    val onSyncSettingsClicked: () -> Unit = {}
 )
 
 private data class ShoppingItemRowVisuals(
@@ -169,6 +172,28 @@ fun ShoppingListRoute(
     viewModel: ShoppingListViewModel = hiltViewModel()
 ) {
     val uiState = viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val notConfiguredMessage = stringResource(R.string.sync_not_configured)
+    val configureActionLabel = stringResource(R.string.sync_configure_action)
+
+    LaunchedEffect(viewModel) {
+        viewModel.uiEvents.collect { event ->
+            when (event) {
+                ShoppingListUiEvent.SyncNotConfigured -> {
+                    snackbarHostState.currentSnackbarData?.dismiss()
+                    val result = snackbarHostState.showSnackbar(
+                        message = notConfiguredMessage,
+                        actionLabel = configureActionLabel,
+                        duration = SnackbarDuration.Short
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        onNavigateToCalDavConfig()
+                    }
+                }
+            }
+        }
+    }
+
     val inputCallbacks = remember(viewModel) {
         ShoppingListInputCallbacks(
             onValueChange = viewModel::onInputValueChange,
@@ -188,17 +213,13 @@ fun ShoppingListRoute(
     }
     val syncCallbacks = remember(viewModel) {
         ShoppingListSyncCallbacks(
-            onSyncMenuClicked = viewModel::onSyncMenuClicked,
-            onSyncMenuDismissed = viewModel::onSyncMenuDismissed,
-            onSyncSettingsRequested = {
-                viewModel.onSyncSettingsRequested()
-                onNavigateToCalDavConfig()
-            },
-            onSyncNowRequested = viewModel::onSyncNowRequested
+            onPullToRefresh = viewModel::onPullToRefresh,
+            onSyncSettingsClicked = onNavigateToCalDavConfig
         )
     }
     ShoppingListScreen(
         uiState = uiState.value,
+        snackbarHostState = snackbarHostState,
         inputCallbacks = inputCallbacks,
         itemCallbacks = itemCallbacks,
         syncCallbacks = syncCallbacks
@@ -209,6 +230,7 @@ fun ShoppingListRoute(
 @Composable
 fun ShoppingListScreen(
     uiState: ShoppingListUiState,
+    snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier,
     inputCallbacks: ShoppingListInputCallbacks = ShoppingListInputCallbacks(),
     itemCallbacks: ShoppingListItemCallbacks = ShoppingListItemCallbacks(),
@@ -232,10 +254,10 @@ fun ShoppingListScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             ShoppingListTopAppBar(
-                isSyncMenuExpanded = uiState.isSyncMenuExpanded,
                 syncCallbacks = syncCallbacks
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         ShoppingListScreenContent(
             uiState = uiState,
@@ -245,17 +267,20 @@ fun ShoppingListScreen(
             ),
             inputCallbacks = inputCallbacks,
             itemCallbacks = itemCallbacks,
+            syncCallbacks = syncCallbacks,
             onInputBarHeightChanged = { inputBarContentHeightPx = it }
         )
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ShoppingListScreenContent(
     uiState: ShoppingListUiState,
     layout: ShoppingListContentLayout,
     inputCallbacks: ShoppingListInputCallbacks,
     itemCallbacks: ShoppingListItemCallbacks,
+    syncCallbacks: ShoppingListSyncCallbacks,
     onInputBarHeightChanged: (Int) -> Unit
 ) {
     Box(
@@ -263,11 +288,30 @@ private fun ShoppingListScreenContent(
             .fillMaxSize()
             .padding(layout.innerPadding)
     ) {
-        ShoppingItemsContent(
-            uiState = uiState,
-            itemCallbacks = itemCallbacks,
-            modifier = Modifier.fillMaxSize()
-        )
+        val pullState = rememberPullToRefreshState()
+        PullToRefreshBox(
+            isRefreshing = uiState.isSyncing,
+            onRefresh = syncCallbacks.onPullToRefresh,
+            state = pullState,
+            modifier = Modifier
+                .fillMaxSize()
+                .testTag(ShoppingListTestTags.PULL_REFRESH_INDICATOR),
+            indicator = {
+                PullToRefreshDefaults.Indicator(
+                    state = pullState,
+                    isRefreshing = uiState.isSyncing,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .testTag(ShoppingListTestTags.PULL_REFRESH_SPINNER)
+                )
+            }
+        ) {
+            ShoppingItemsContent(
+                uiState = uiState,
+                itemCallbacks = itemCallbacks,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
 
         ShoppingInputBar(
             value = uiState.inputValue,
@@ -295,7 +339,6 @@ private fun ShoppingListScreenContent(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ShoppingListTopAppBar(
-    isSyncMenuExpanded: Boolean,
     syncCallbacks: ShoppingListSyncCallbacks
 ) {
     TopAppBar(
@@ -303,32 +346,14 @@ private fun ShoppingListTopAppBar(
             Text(text = stringResource(R.string.shopping_list_title))
         },
         actions = {
-            Box {
-                IconButton(
-                    onClick = syncCallbacks.onSyncMenuClicked,
-                    modifier = Modifier.testTag(ShoppingListTestTags.SYNC_MENU_BUTTON)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.MoreVert,
-                        contentDescription = stringResource(R.string.sync_menu_open)
-                    )
-                }
-
-                DropdownMenu(
-                    expanded = isSyncMenuExpanded,
-                    onDismissRequest = syncCallbacks.onSyncMenuDismissed
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.sync_now)) },
-                        onClick = syncCallbacks.onSyncNowRequested,
-                        modifier = Modifier.testTag(ShoppingListTestTags.SYNC_NOW_MENU_ITEM)
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.sync_settings)) },
-                        onClick = syncCallbacks.onSyncSettingsRequested,
-                        modifier = Modifier.testTag(ShoppingListTestTags.SYNC_SETTINGS_MENU_ITEM)
-                    )
-                }
+            IconButton(
+                onClick = syncCallbacks.onSyncSettingsClicked,
+                modifier = Modifier.testTag(ShoppingListTestTags.SYNC_SETTINGS_BUTTON)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Settings,
+                    contentDescription = stringResource(R.string.sync_settings)
+                )
             }
         }
     )
@@ -819,4 +844,3 @@ private fun SwipeDeleteBackground(
         )
     }
 }
-
