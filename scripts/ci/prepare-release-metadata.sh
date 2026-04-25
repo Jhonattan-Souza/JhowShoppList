@@ -128,13 +128,13 @@ build_verification() {
 
   apksigner="$(find_apksigner)"
 
-  # Capture --print-certs output explicitly so apksigner failures abort the script
-  # instead of being swallowed by the pipe.
-  certs_output="$("$apksigner" verify --print-certs "$apk_path")"
+  # Capture --print-certs output (apksigner may write it to stderr, so merge both streams).
+  certs_output="$("$apksigner" verify --print-certs "$apk_path" 2>&1)"
   digest="$(printf '%s\n' "$certs_output" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -n 1)"
 
   if [[ -z "$digest" ]]; then
     printf 'Unable to extract SHA-256 digest from %s\n' "$apk_path" >&2
+    printf 'apksigner output was:\n%s\n' "$certs_output" >&2
     exit 1
   fi
 
