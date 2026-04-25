@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="64" viewBox="0 0 220 64" role="img" aria-labelledby="title desc">
+  <title id="title">Get it on GitHub Releases</title>
+  <desc id="desc">Badge linking to GitHub Releases downloads.</desc>
+  <rect width="220" height="64" rx="12" fill="#111827"/>
+  <text x="110" y="24" fill="#9CA3AF" font-family="Arial, Helvetica, sans-serif" font-size="12" text-anchor="middle">Download from</text>
+  <text x="110" y="44" fill="#FFFFFF" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" text-anchor="middle">GitHub Releases</text>
+</svg>

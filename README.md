@@ -1,6 +1,24 @@
 # JhowShoppList
 
+[![Release](https://github.com/Jhonattan-Souza/JhowShoppList/actions/workflows/release.yml/badge.svg)](https://github.com/Jhonattan-Souza/JhowShoppList/actions/workflows/release.yml)
+[![Get it on GitHub Releases](.github/assets/get-it-on-github.svg)](https://github.com/Jhonattan-Souza/JhowShoppList/releases)
+[![Track with Obtainium](.github/assets/track-with-obtainium.svg)](https://github.com/Jhonattan-Souza/JhowShoppList)
+
 Android shopping list app built with Kotlin, Jetpack Compose, Room, Hilt, Coroutines, and Flow.
+
+## Install and verify
+
+GitHub Releases is the canonical distribution channel for release APKs.
+
+- Fast install: open the releases page above and download the latest signed APK.
+- Obtainium: add `https://github.com/Jhonattan-Souza/JhowShoppList` as a GitHub source to install and receive updates from GitHub Releases.
+- AppVerifier: use the package name below and the SHA-256 fingerprint published in each signed GitHub Release `Verification` section before installing a downloaded APK.
+
+### Verification info
+
+- Package name: `com.jhow.shopplist`
+- SHA-256 hash of signing certificate: published in each signed GitHub Release `Verification` section
+- Verify a downloaded APK with `apksigner verify --print-certs app-release.apk`
 
 ## What it does
 
@@ -51,15 +69,6 @@ Android shopping list app built with Kotlin, Jetpack Compose, Room, Hilt, Corout
 - instrumented tests target the debug app only, so they do not touch production data
 - `scripts/deploy-debug.sh` installs `com.jhow.shopplist.debug` with `adb install -r`, which updates the debug app without clearing its database or app data
 - `scripts/deploy-release.sh` installs `com.jhow.shopplist` with `adb install -r`, which updates the release app without clearing its database or app data
-
-## Release signing
-
-- Prefer exporting the matching `JHOW_SHOPPLIST_RELEASE_*` environment variables for release signing.
-- If you copy `keystore.properties.example` to `keystore.properties`, keep it local only, store the keystore outside this repository, and delete the file before sharing or archiving the repository directory.
-- `scripts/deploy-release.sh` refuses to run unless all release signing values are present.
-- `./gradlew assembleRelease` can be used without signing secrets for local release-build verification; signed release deployment still requires release signing values.
-- Use a dedicated release keystore for `com.jhow.shopplist`; do not sign the production app with the debug keystore.
-- `./scripts/backup-release-keystore.sh DESTINATION_DIR` creates a timestamped backup containing both the release keystore and `keystore.properties`.
 
 ## Open-source safety
 
