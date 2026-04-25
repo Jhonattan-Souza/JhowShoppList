@@ -13,9 +13,9 @@
     <string name="delete_item_swipe_label">Delete item</string>
     <string name="delete_item_confirm">Delete</string>
     <string name="delete_item_cancel">Cancel</string>
-    <string name="sync_menu_open">Open sync menu</string>
-    <string name="sync_now">Sync now</string>
     <string name="sync_settings">Sync settings</string>
+    <string name="sync_not_configured">Sync not configured</string>
+    <string name="sync_configure_action">Configure</string>
     <string name="sync_server_label">Server</string>
     <string name="sync_username_label">Username</string>
     <string name="sync_password_label">Password</string>

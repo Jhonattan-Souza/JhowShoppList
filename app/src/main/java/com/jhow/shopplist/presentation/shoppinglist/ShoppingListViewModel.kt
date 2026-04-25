@@ -6,18 +6,26 @@ import com.jhow.shopplist.core.search.ShoppingSearch
 import com.jhow.shopplist.domain.model.ShoppingItem
 import com.jhow.shopplist.domain.usecase.AddOrReclaimShoppingItemUseCase
 import com.jhow.shopplist.domain.usecase.DeleteShoppingItemUseCase
+import com.jhow.shopplist.domain.usecase.GetCalDavSyncConfigUseCase
 import com.jhow.shopplist.domain.usecase.MarkPurchasedItemPendingUseCase
 import com.jhow.shopplist.domain.usecase.MarkSelectedItemsPurchasedUseCase
 import com.jhow.shopplist.domain.usecase.ObserveItemNamesUseCase
 import com.jhow.shopplist.domain.usecase.ObservePendingItemsUseCase
 import com.jhow.shopplist.domain.usecase.ObservePurchasedItemsUseCase
+import com.jhow.shopplist.domain.usecase.ObserveSyncStateUseCase
 import com.jhow.shopplist.domain.usecase.RequestShoppingSyncUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -41,13 +49,20 @@ class ShoppingListViewModel @Inject constructor(
     private val deleteShoppingItemUseCase: DeleteShoppingItemUseCase,
     private val markSelectedItemsPurchasedUseCase: MarkSelectedItemsPurchasedUseCase,
     private val markPurchasedItemPendingUseCase: MarkPurchasedItemPendingUseCase,
-    private val requestShoppingSyncUseCase: RequestShoppingSyncUseCase
+    private val requestShoppingSyncUseCase: RequestShoppingSyncUseCase,
+    observeSyncStateUseCase: ObserveSyncStateUseCase,
+    getCalDavSyncConfigUseCase: GetCalDavSyncConfigUseCase
 ) : ViewModel() {
+
+    private val _uiEvents = MutableSharedFlow<ShoppingListUiEvent>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
+    val uiEvents: SharedFlow<ShoppingListUiEvent> = _uiEvents.asSharedFlow()
 
     private val inputValue = MutableStateFlow("")
     private val selectedIds = MutableStateFlow(emptySet<String>())
     private val itemPendingDeletion = MutableStateFlow<ShoppingItem?>(null)
-    private val syncMenuExpanded = MutableStateFlow(false)
     private val inputWithSuggestions = combine(observeItemNamesUseCase(), inputValue) { allItemNames, currentInput ->
         currentInput to buildSuggestions(allItemNames = allItemNames, currentInput = currentInput)
     }
@@ -69,8 +84,14 @@ class ShoppingListViewModel @Inject constructor(
         )
     }
 
+    private val isSyncing = observeSyncStateUseCase()
+    private val isSyncConfigured = getCalDavSyncConfigUseCase()
+        .map { it.isReadyToSync }
+        .distinctUntilChanged()
+
     val uiState: StateFlow<ShoppingListUiState> = combinedState
-        .combine(syncMenuExpanded) { intermediate, isSyncMenuExpanded ->
+        .combine(isSyncing) { intermediate, syncing -> intermediate to syncing }
+        .combine(isSyncConfigured) { (intermediate, syncing), configured ->
             val pendingIds = intermediate.pendingItems.mapTo(linkedSetOf()) { it.id }
             val distinctPurchasedItems = intermediate.purchasedItems.filterNot { it.id in pendingIds }
             val visibleItems = intermediate.pendingItems + distinctPurchasedItems
@@ -82,7 +103,8 @@ class ShoppingListViewModel @Inject constructor(
                 purchasedItems = distinctPurchasedItems,
                 selectedIds = intermediate.selectedIds.intersect(pendingIds),
                 itemPendingDeletion = visibleItems.firstOrNull { it.id == intermediate.itemPendingDeletion?.id },
-                isSyncMenuExpanded = isSyncMenuExpanded
+                isSyncing = syncing,
+                isSyncConfigured = configured
             )
         }.stateIn(
             scope = viewModelScope,
@@ -154,23 +176,14 @@ class ShoppingListViewModel @Inject constructor(
         }
     }
 
-    fun onSyncMenuClicked() {
-        syncMenuExpanded.value = true
-    }
-
-    fun onSyncMenuDismissed() {
-        syncMenuExpanded.value = false
-    }
-
-    fun onSyncNowRequested() {
-        syncMenuExpanded.value = false
+    fun onPullToRefresh() {
+        if (!uiState.value.isSyncConfigured) {
+            _uiEvents.tryEmit(ShoppingListUiEvent.SyncNotConfigured)
+            return
+        }
         viewModelScope.launch {
             requestShoppingSyncUseCase()
         }
-    }
-
-    fun onSyncSettingsRequested() {
-        syncMenuExpanded.value = false
     }
 
     private companion object {
