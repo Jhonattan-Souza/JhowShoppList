@@ -17,6 +17,47 @@ if (keystorePropertiesFile.exists()) {
     keystorePropertiesFile.inputStream().use(keystoreProperties::load)
 }
 
+fun requiredGradleStringProperty(name: String): String {
+    return providers.gradleProperty(name)
+        .orNull
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
+        ?: error("Missing required Gradle property: $name")
+}
+
+val appVersionName = requiredGradleStringProperty("APP_VERSION_NAME")
+val requireReleaseSigning = providers.gradleProperty("jhow.requireReleaseSigning")
+    .orNull
+    ?.toBooleanStrictOrNull()
+    ?: false
+
+fun deriveVersionCodeFromSemver(versionName: String): Int {
+    val match = Regex("""^(\d+)\.(\d+)\.(\d+)$""")
+        .matchEntire(versionName)
+        ?: error("APP_VERSION_NAME must use MAJOR.MINOR.PATCH semver")
+
+    val (major, minor, patch) = match.destructured
+    val majorPart = major.toInt()
+    val minorPart = minor.toInt()
+    val patchPart = patch.toInt()
+
+    check(minorPart in 0..99 && patchPart in 0..99) {
+        "APP_VERSION_NAME minor and patch values must be between 0 and 99"
+    }
+
+    val derived = (majorPart * 10_000) + (minorPart * 100) + patchPart
+    check(derived > 0) {
+        "APP_VERSION_NAME must be greater than 0.0.0"
+    }
+    return derived
+}
+
+val appVersionCode = deriveVersionCodeFromSemver(appVersionName)
+
+val releaseSigningMissingMessage =
+    "Release signing is not configured. Set releaseStoreFile, releaseStorePassword, releaseKeyAlias, " +
+        "and releaseKeyPassword in keystore.properties or the matching JHOW_SHOPPLIST_RELEASE_* environment variables."
+
 fun signingValue(propertyName: String, envName: String): String? {
     val propertyValue = keystoreProperties.getProperty(propertyName)?.trim().orEmpty()
     if (propertyValue.isNotEmpty()) {
@@ -58,8 +99,8 @@ android {
         applicationId = "com.jhow.shopplist"
         minSdk = 36
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
         testApplicationId = "com.jhow.shopplist.debug.test"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -86,6 +127,10 @@ android {
             if (hasReleaseSigningConfig) {
                 signingConfig = signingConfigs.getByName("release")
             }
+            // R8/minification is intentionally disabled: enabling it requires validated keep rules
+            // for Room/Hilt/Compose and transitive dependencies (e.g. xpp3 via dav4jvm). The ProGuard
+            // file references are kept so re-enabling isMinifyEnabled later picks up the standard
+            // optimize config plus project-specific rules automatically.
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -125,25 +170,29 @@ android {
     }
 }
 
+val lintVariantTaskNames = setOf("lintDebug", "lintRelease")
+val signingRequiredTaskNames = setOf("bundleRelease", "installRelease")
+
 afterEvaluate {
-    tasks.named("lintDebug") {
-        dependsOn("detekt")
-    }
+    tasks.matching { task -> task.name in lintVariantTaskNames }
+        .configureEach { dependsOn("detekt") }
 }
 
-tasks.matching { task ->
-    task.name in setOf("bundleRelease", "installRelease")
-}.configureEach {
-    doFirst {
-        check(hasReleaseSigningConfig) {
-            "Release signing is not configured. Set releaseStoreFile, releaseStorePassword, releaseKeyAlias, and releaseKeyPassword in keystore.properties or the matching JHOW_SHOPPLIST_RELEASE_* environment variables."
+tasks.matching { task -> task.name in signingRequiredTaskNames }
+    .configureEach {
+        doFirst {
+            check(hasReleaseSigningConfig) { releaseSigningMissingMessage }
         }
     }
-}
 
 tasks.matching { task -> task.name == "assembleRelease" }.configureEach {
+    doFirst {
+        if (requireReleaseSigning) {
+            check(hasReleaseSigningConfig) { releaseSigningMissingMessage }
+        }
+    }
     doLast {
-        if (!hasReleaseSigningConfig) {
+        if (!hasReleaseSigningConfig && !requireReleaseSigning) {
             logger.warn(
                 "assembleRelease completed without release signing. " +
                     "The generated release APK is unsigned and must not be distributed."
