@@ -2,6 +2,7 @@ package com.jhow.shopplist.presentation.shoppinglist
 
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -9,14 +10,13 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
-class ShoppingListPullRefreshTest {
+class ShoppingListTopBarTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<ComponentActivity>()
 
@@ -56,7 +56,7 @@ class ShoppingListPullRefreshTest {
         }
         composeRule.waitForIdle()
 
-        assertFalse(composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_BADGE).fetchSemanticsNodes().isNotEmpty())
+        composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_BADGE).assertCountEquals(0)
         composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_SETTINGS_BUTTON).assertIsDisplayed()
     }
 
@@ -72,9 +72,7 @@ class ShoppingListPullRefreshTest {
 
         composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_BADGE).assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Sync now").assertIsDisplayed()
-        assertFalse(
-            composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_BADGE_SPINNER).fetchSemanticsNodes().isNotEmpty()
-        )
+        composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_BADGE_SPINNER).assertCountEquals(0)
     }
 
     @Test
@@ -142,8 +140,6 @@ class ShoppingListPullRefreshTest {
 
         composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_BADGE_SPINNER).assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Sync now").assertIsDisplayed()
-        assertFalse(
-            composeRule.onAllNodesWithTag(ShoppingListTestTags.MANUAL_SYNC_LOADER).fetchSemanticsNodes().isNotEmpty()
-        )
+        composeRule.onAllNodesWithTag(ShoppingListTestTags.MANUAL_SYNC_LOADER).assertCountEquals(0)
     }
 }
