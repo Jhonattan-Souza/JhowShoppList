@@ -4,6 +4,8 @@ import com.jhow.shopplist.data.sync.CalDavCollectionCandidate
 import com.jhow.shopplist.data.sync.CalDavAuthenticationException
 import com.jhow.shopplist.data.sync.CalDavDiscoveryService
 import com.jhow.shopplist.data.sync.CalDavListLocator
+import com.jhow.shopplist.data.sync.CalDavTaskDeleteResult
+import com.jhow.shopplist.data.sync.CalDavTaskUpsertResult
 import com.jhow.shopplist.domain.model.CalDavValidationResult
 import com.jhow.shopplist.domain.model.RemoteShoppingItemSnapshot
 import com.jhow.shopplist.testing.FakeCalDavConfigRepository
@@ -342,6 +344,22 @@ class ValidateCalDavSyncSettingsUseCaseTest {
             password: String,
             collectionHref: String
         ): List<RemoteShoppingItemSnapshot> = emptyList()
+
+        override suspend fun upsertTaskItem(
+            serverUrl: String,
+            username: String,
+            password: String,
+            collectionHref: String,
+            item: com.jhow.shopplist.domain.model.ShoppingItem
+        ): CalDavTaskUpsertResult = error("Not used in validation tests")
+
+        override suspend fun deleteTaskItem(
+            serverUrl: String,
+            username: String,
+            password: String,
+            href: String,
+            eTag: String?
+        ): CalDavTaskDeleteResult = error("Not used in validation tests")
     }
 
     private class ContextRecordingDiscoveryService(
@@ -372,6 +390,22 @@ class ValidateCalDavSyncSettingsUseCaseTest {
             password: String,
             collectionHref: String
         ): List<RemoteShoppingItemSnapshot> = emptyList()
+
+        override suspend fun upsertTaskItem(
+            serverUrl: String,
+            username: String,
+            password: String,
+            collectionHref: String,
+            item: com.jhow.shopplist.domain.model.ShoppingItem
+        ): CalDavTaskUpsertResult = error("Not used in validation tests")
+
+        override suspend fun deleteTaskItem(
+            serverUrl: String,
+            username: String,
+            password: String,
+            href: String,
+            eTag: String?
+        ): CalDavTaskDeleteResult = error("Not used in validation tests")
     }
 
     private fun newNamedDispatcher(threadName: String): ExecutorCoroutineDispatcher {

@@ -220,6 +220,22 @@ class CalDavConfigViewModelTest {
                     password: String,
                     collectionHref: String
                 ) = emptyList<com.jhow.shopplist.domain.model.RemoteShoppingItemSnapshot>()
+
+                override suspend fun upsertTaskItem(
+                    serverUrl: String,
+                    username: String,
+                    password: String,
+                    collectionHref: String,
+                    item: com.jhow.shopplist.domain.model.ShoppingItem
+                ) = error("Not used")
+
+                override suspend fun deleteTaskItem(
+                    serverUrl: String,
+                    username: String,
+                    password: String,
+                    href: String,
+                    eTag: String?
+                ) = error("Not used")
             }
         ),
         ioDispatcher = UnconfinedTestDispatcher()
@@ -259,6 +275,22 @@ class CalDavConfigViewModelTest {
                 password: String,
                 collectionHref: String
             ) = emptyList<com.jhow.shopplist.domain.model.RemoteShoppingItemSnapshot>()
+
+            override suspend fun upsertTaskItem(
+                serverUrl: String,
+                username: String,
+                password: String,
+                collectionHref: String,
+                item: com.jhow.shopplist.domain.model.ShoppingItem
+            ) = error("Not used")
+
+            override suspend fun deleteTaskItem(
+                serverUrl: String,
+                username: String,
+                password: String,
+                href: String,
+                eTag: String?
+            ) = error("Not used")
         },
         ioDispatcher = UnconfinedTestDispatcher()
     ) {

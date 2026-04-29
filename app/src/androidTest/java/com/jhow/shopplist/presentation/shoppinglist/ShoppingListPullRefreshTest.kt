@@ -86,7 +86,7 @@ class ShoppingListPullRefreshTest {
     }
 
     @Test
-    fun pullToRefreshSpinner_notShown_whenIsSyncingFalse() {
+    fun pullToRefreshSpinner_remainsAvailable_whenIsSyncingFalse() {
         composeRule.setContent {
             ShoppingListScreen(
                 uiState = ShoppingListUiState(isSyncing = false),
@@ -95,6 +95,6 @@ class ShoppingListPullRefreshTest {
         }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithTag(ShoppingListTestTags.PULL_REFRESH_SPINNER).assertDoesNotExist()
+        composeRule.onNodeWithTag(ShoppingListTestTags.PULL_REFRESH_SPINNER).assertIsDisplayed()
     }
 }

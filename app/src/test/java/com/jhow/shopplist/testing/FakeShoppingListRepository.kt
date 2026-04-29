@@ -121,30 +121,57 @@ class FakeShoppingListRepository : ShoppingListRepository {
     override suspend fun getAllItems(): List<ShoppingItem> = items.value
 
     override suspend fun importRemoteItems(items: List<RemoteShoppingItemSnapshot>) {
-        val knownRemoteUids = this.items.value
-            .mapNotNull { it.remoteMetadata.remoteUid }
-            .toSet()
-        val newItems = items.filter { it.remoteUid !in knownRemoteUids }
+        val existingByRemoteUid = this.items.value
+            .mapNotNull { item ->
+                item.remoteMetadata.remoteUid?.let { remoteUid -> remoteUid to item }
+            }
+            .toMap()
+        val newItems = items.filter { it.remoteUid !in existingByRemoteUid }
         importedItems += newItems
         val now = 5_000L + this.items.value.size
-        this.items.value = this.items.value + newItems.map { remote ->
-            ShoppingItem(
-                id = "imported-${remote.remoteUid}",
-                name = remote.summary,
-                isPurchased = remote.isCompleted,
-                purchaseCount = if (remote.isCompleted) 1 else 0,
-                createdAt = remote.lastModifiedAt ?: now,
-                updatedAt = remote.lastModifiedAt ?: now,
-                isDeleted = false,
-                syncStatus = SyncStatus.SYNCED,
-                remoteMetadata = ShoppingItemRemoteMetadata(
-                    remoteUid = remote.remoteUid,
-                    remoteHref = remote.href,
-                    remoteEtag = remote.eTag,
-                    remoteLastModifiedAt = remote.lastModifiedAt,
-                    lastSyncedAt = now
+        val retainedItems = this.items.value.filter { item ->
+            item.remoteMetadata.remoteUid !in items.mapTo(mutableSetOf()) { remote -> remote.remoteUid }
+        }
+        this.items.value = retainedItems + items.map { remote ->
+            val existing = existingByRemoteUid[remote.remoteUid]
+            if (existing == null) {
+                ShoppingItem(
+                    id = "imported-${remote.remoteUid}",
+                    name = remote.summary,
+                    isPurchased = remote.isCompleted,
+                    purchaseCount = if (remote.isCompleted) 1 else 0,
+                    createdAt = remote.lastModifiedAt ?: now,
+                    updatedAt = remote.lastModifiedAt ?: now,
+                    isDeleted = false,
+                    syncStatus = SyncStatus.SYNCED,
+                    remoteMetadata = ShoppingItemRemoteMetadata(
+                        remoteUid = remote.remoteUid,
+                        remoteHref = remote.href,
+                        remoteEtag = remote.eTag,
+                        remoteLastModifiedAt = remote.lastModifiedAt,
+                        lastSyncedAt = now
+                    )
                 )
-            )
+            } else {
+                existing.copy(
+                    name = remote.summary,
+                    isPurchased = remote.isCompleted,
+                    purchaseCount = when {
+                        remote.isCompleted && !existing.isPurchased -> existing.purchaseCount + 1
+                        else -> existing.purchaseCount
+                    },
+                    updatedAt = remote.lastModifiedAt ?: now,
+                    isDeleted = false,
+                    syncStatus = SyncStatus.SYNCED,
+                    remoteMetadata = ShoppingItemRemoteMetadata(
+                        remoteUid = remote.remoteUid,
+                        remoteHref = remote.href,
+                        remoteEtag = remote.eTag,
+                        remoteLastModifiedAt = remote.lastModifiedAt,
+                        lastSyncedAt = now
+                    )
+                )
+            }
         }
     }
 
@@ -171,7 +198,14 @@ class FakeShoppingListRepository : ShoppingListRepository {
             val result = resultMap[item.id] ?: return@map item
             item.copy(
                 updatedAt = result.serverUpdatedAt,
-                syncStatus = SyncStatus.SYNCED
+                syncStatus = SyncStatus.SYNCED,
+                remoteMetadata = item.remoteMetadata.copy(
+                    remoteUid = result.remoteUid ?: item.remoteMetadata.remoteUid,
+                    remoteHref = result.remoteHref ?: item.remoteMetadata.remoteHref,
+                    remoteEtag = result.remoteEtag,
+                    remoteLastModifiedAt = result.remoteLastModifiedAt,
+                    lastSyncedAt = result.lastSyncedAt
+                )
             )
         }
     }

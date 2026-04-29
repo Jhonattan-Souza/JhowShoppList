@@ -77,5 +77,21 @@ class CalDavListLocatorTest {
             password: String,
             collectionHref: String
         ): List<RemoteShoppingItemSnapshot> = emptyList()
+
+        override suspend fun upsertTaskItem(
+            serverUrl: String,
+            username: String,
+            password: String,
+            collectionHref: String,
+            item: com.jhow.shopplist.domain.model.ShoppingItem
+        ): CalDavTaskUpsertResult = error("Not used in locator tests")
+
+        override suspend fun deleteTaskItem(
+            serverUrl: String,
+            username: String,
+            password: String,
+            href: String,
+            eTag: String?
+        ): CalDavTaskDeleteResult = error("Not used in locator tests")
     }
 }
