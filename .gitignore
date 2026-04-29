@@ -50,8 +50,12 @@ service-account*.json
 secrets.properties
 secrets.*.properties
 
+# Kotlin
+.kotlin/
+
+## LLM docs and tests
 .agents
 skills-lock.json
 .opencode
-docs
 .superpowers
+.claude

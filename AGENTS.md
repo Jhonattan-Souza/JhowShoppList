@@ -78,3 +78,17 @@ Long term maintainability is a core priority. If you add new functionality, firs
 - `./scripts/backup-release-keystore.sh DESTINATION_DIR` creates a secure local backup of the release keystore plus `keystore.properties`.
 - The debug launcher label is `Jhow Shopp List Debug` and uses a different icon color to distinguish it from production.
 - `connectedDebugAndroidTest` targets the debug app only and should not affect the production install.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Five canonical roles mapped to GitHub labels as listed below. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context repo: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
