@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">Jhow Shopp List</string>
-    <string name="shopping_list_title">Shopping list</string>
+    <string name="shopping_list_title">Shopping List</string>
     <string name="add_item_label">Add item</string>
     <string name="add_item_placeholder">Milk, coffee, tomatoes\u2026</string>
     <string name="purchase_selected_items">Mark selected items as purchased</string>
@@ -13,9 +13,8 @@
     <string name="delete_item_swipe_label">Delete item</string>
     <string name="delete_item_confirm">Delete</string>
     <string name="delete_item_cancel">Cancel</string>
+    <string name="sync_now">Sync now</string>
     <string name="sync_settings">Sync settings</string>
-    <string name="sync_not_configured">Sync not configured</string>
-    <string name="sync_configure_action">Configure</string>
     <string name="sync_server_label">Server</string>
     <string name="sync_username_label">Username</string>
     <string name="sync_password_label">Password</string>

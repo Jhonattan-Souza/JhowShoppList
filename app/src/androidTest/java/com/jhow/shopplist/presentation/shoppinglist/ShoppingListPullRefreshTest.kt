@@ -4,11 +4,12 @@ import androidx.activity.ComponentActivity
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipeDown
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -33,6 +34,50 @@ class ShoppingListPullRefreshTest {
     }
 
     @Test
+    fun topAppBar_showsBrandIcon() {
+        composeRule.setContent {
+            ShoppingListScreen(
+                uiState = ShoppingListUiState(),
+                snackbarHostState = SnackbarHostState()
+            )
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.BRAND_ICON).assertIsDisplayed()
+    }
+
+    @Test
+    fun syncBadge_hidden_whenSyncIsNotConfigured() {
+        composeRule.setContent {
+            ShoppingListScreen(
+                uiState = ShoppingListUiState(isSyncConfigured = false),
+                snackbarHostState = SnackbarHostState()
+            )
+        }
+        composeRule.waitForIdle()
+
+        assertFalse(composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_BADGE).fetchSemanticsNodes().isNotEmpty())
+        composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_SETTINGS_BUTTON).assertIsDisplayed()
+    }
+
+    @Test
+    fun syncBadge_visible_whenSyncConfiguredAndIdle() {
+        composeRule.setContent {
+            ShoppingListScreen(
+                uiState = ShoppingListUiState(isSyncConfigured = true),
+                snackbarHostState = SnackbarHostState()
+            )
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_BADGE).assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Sync now").assertIsDisplayed()
+        assertFalse(
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_BADGE_SPINNER).fetchSemanticsNodes().isNotEmpty()
+        )
+    }
+
+    @Test
     fun clickingSettingsGear_invokesOnSyncSettingsClicked() {
         var settingsClicked = false
         composeRule.setContent {
@@ -52,11 +97,11 @@ class ShoppingListPullRefreshTest {
     }
 
     @Test
-    fun pullDownGesture_invokesOnManualSyncRequested() {
+    fun clickingSyncBadge_invokesOnManualSyncRequested() {
         var manualSyncInvoked = false
         composeRule.setContent {
             ShoppingListScreen(
-                uiState = ShoppingListUiState(),
+                uiState = ShoppingListUiState(isSyncConfigured = true),
                 snackbarHostState = SnackbarHostState(),
                 syncCallbacks = ShoppingListSyncCallbacks(
                     onManualSyncRequested = { manualSyncInvoked = true }
@@ -65,36 +110,40 @@ class ShoppingListPullRefreshTest {
         }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithTag(ShoppingListTestTags.PULL_REFRESH_INDICATOR)
-            .performTouchInput { swipeDown() }
+        composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_BADGE).performClick()
         composeRule.waitForIdle()
 
-        assertTrue("Pull-to-refresh callback should fire", manualSyncInvoked)
+        assertTrue("Sync badge callback should fire", manualSyncInvoked)
     }
 
     @Test
-    fun pullToRefreshSpinner_visible_whenIsManualSyncTrue() {
+    fun syncBadgeSpinner_visible_whenManualSyncTrue() {
         composeRule.setContent {
             ShoppingListScreen(
-                uiState = ShoppingListUiState(isManualSync = true),
+                uiState = ShoppingListUiState(isSyncConfigured = true, isManualSync = true),
                 snackbarHostState = SnackbarHostState()
             )
         }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithTag(ShoppingListTestTags.PULL_REFRESH_SPINNER).assertIsDisplayed()
+        composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_BADGE_SPINNER).assertIsDisplayed()
+        composeRule.onNodeWithTag(ShoppingListTestTags.MANUAL_SYNC_LOADER).assertIsDisplayed()
     }
 
     @Test
-    fun pullToRefreshSpinner_remainsAvailable_whenIsManualSyncFalse() {
+    fun syncBadgeSpinner_visible_whenBackgroundSyncTrue_butManualLoaderHidden() {
         composeRule.setContent {
             ShoppingListScreen(
-                uiState = ShoppingListUiState(isManualSync = false),
+                uiState = ShoppingListUiState(isSyncConfigured = true, isBackgroundSync = true),
                 snackbarHostState = SnackbarHostState()
             )
         }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithTag(ShoppingListTestTags.PULL_REFRESH_SPINNER).assertIsDisplayed()
+        composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_BADGE_SPINNER).assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Sync now").assertIsDisplayed()
+        assertFalse(
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.MANUAL_SYNC_LOADER).fetchSemanticsNodes().isNotEmpty()
+        )
     }
 }
