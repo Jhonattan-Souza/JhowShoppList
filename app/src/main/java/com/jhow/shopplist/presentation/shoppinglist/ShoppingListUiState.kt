@@ -11,7 +11,8 @@ data class ShoppingListUiState(
     val purchasedItems: List<ShoppingItem> = emptyList(),
     val selectedIds: Set<String> = emptySet(),
     val itemPendingDeletion: ShoppingItem? = null,
-    val isSyncing: Boolean = false,
+    val isManualSync: Boolean = false,
+    val isBackgroundSync: Boolean = false,
     val isSyncConfigured: Boolean = false
 ) {
     val isBulkActionVisible: Boolean

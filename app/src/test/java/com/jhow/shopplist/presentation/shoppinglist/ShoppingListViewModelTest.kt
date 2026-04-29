@@ -301,16 +301,132 @@ class ShoppingListViewModelTest {
     }
 
     @Test
-    fun `isSyncing reflects scheduler observe sync state`() = runTest {
+    fun `background sync without manual request exposes isBackgroundSync only`() = runTest {
         syncScheduler.setSyncing(true)
         advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value.isSyncing)
+        assertFalse(viewModel.uiState.value.isManualSync)
+        assertTrue(viewModel.uiState.value.isBackgroundSync)
 
         syncScheduler.setSyncing(false)
         advanceUntilIdle()
 
-        assertFalse(viewModel.uiState.value.isSyncing)
+        assertFalse(viewModel.uiState.value.isManualSync)
+        assertFalse(viewModel.uiState.value.isBackgroundSync)
+    }
+
+    @Test
+    fun `mutation during manual sync keeps isManualSync true until queue drains`() = runTest {
+        calDavConfigRepository.seed(
+            enabled = true,
+            serverUrl = "https://example.com",
+            username = "user",
+            listName = "Shopping"
+        )
+        advanceUntilIdle()
+
+        syncScheduler.setSyncing(true)
+        viewModel.onManualSyncRequested()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isManualSync)
+
+        // Simulate mutation-triggered background sync overlapping with manual sync
+        viewModel.onInputValueChange("Milk")
+        viewModel.onAddItem()
+        advanceUntilIdle()
+
+        assertEquals(listOf("Milk"), repository.addedNames)
+        assertTrue(viewModel.uiState.value.isManualSync)
+
+        syncScheduler.setSyncing(false)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isManualSync)
+    }
+
+    @Test
+    fun `manual sync after local mutation request does not enqueue duplicate sync`() = runTest {
+        calDavConfigRepository.seed(
+            enabled = true,
+            serverUrl = "https://example.com",
+            username = "user",
+            listName = "Shopping"
+        )
+        advanceUntilIdle()
+
+        viewModel.onInputValueChange("Milk")
+        viewModel.onAddItem()
+        advanceUntilIdle()
+
+        assertEquals(1, syncScheduler.requestCount)
+
+        viewModel.onManualSyncRequested()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isManualSync)
+        assertEquals(1, syncScheduler.requestCount)
+
+        syncScheduler.setSyncing(true)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isManualSync)
+        assertFalse(viewModel.uiState.value.isBackgroundSync)
+    }
+
+    @Test
+    fun `manual sync during background sync promotes to manual without duplicate request`() = runTest {
+        calDavConfigRepository.seed(
+            enabled = true,
+            serverUrl = "https://example.com",
+            username = "user",
+            listName = "Shopping"
+        )
+        advanceUntilIdle()
+
+        syncScheduler.setSyncing(true)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isBackgroundSync)
+        assertFalse(viewModel.uiState.value.isManualSync)
+        assertEquals(0, syncScheduler.requestCount)
+
+        viewModel.onManualSyncRequested()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isManualSync)
+        assertFalse(viewModel.uiState.value.isBackgroundSync)
+        assertEquals(0, syncScheduler.requestCount)
+
+        syncScheduler.setSyncing(false)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isManualSync)
+        assertFalse(viewModel.uiState.value.isBackgroundSync)
+    }
+
+    @Test
+    fun `isManualSync reflects manual sync request while scheduler is syncing`() = runTest {
+        calDavConfigRepository.seed(
+            enabled = true,
+            serverUrl = "https://example.com",
+            username = "user",
+            listName = "Shopping"
+        )
+        advanceUntilIdle()
+
+        syncScheduler.setSyncing(true)
+        viewModel.onManualSyncRequested()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isManualSync)
+        assertFalse(viewModel.uiState.value.isBackgroundSync)
+
+        syncScheduler.setSyncing(false)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isManualSync)
+        assertFalse(viewModel.uiState.value.isBackgroundSync)
     }
 
     @Test
@@ -335,7 +451,7 @@ class ShoppingListViewModelTest {
     }
 
     @Test
-    fun `onPullToRefresh when configured invokes sync`() = runTest {
+    fun `onManualSyncRequested when configured invokes sync`() = runTest {
         calDavConfigRepository.seed(
             enabled = true,
             serverUrl = "https://example.com",
@@ -344,30 +460,30 @@ class ShoppingListViewModelTest {
         )
         advanceUntilIdle()
 
-        viewModel.onPullToRefresh()
+        viewModel.onManualSyncRequested()
         advanceUntilIdle()
 
         assertEquals(1, syncScheduler.requestCount)
     }
 
     @Test
-    fun `onPullToRefresh when not configured does not invoke sync`() = runTest {
+    fun `onManualSyncRequested when not configured does not invoke sync`() = runTest {
         calDavConfigRepository.seed(enabled = false)
         advanceUntilIdle()
 
-        viewModel.onPullToRefresh()
+        viewModel.onManualSyncRequested()
         advanceUntilIdle()
 
         assertEquals(0, syncScheduler.requestCount)
     }
 
     @Test
-    fun `onPullToRefresh when not configured emits SyncNotConfigured event`() = runTest {
+    fun `onManualSyncRequested when not configured emits SyncNotConfigured event`() = runTest {
         calDavConfigRepository.seed(enabled = false)
         advanceUntilIdle()
 
         viewModel.uiEvents.test {
-            viewModel.onPullToRefresh()
+            viewModel.onManualSyncRequested()
             assertEquals(ShoppingListUiEvent.SyncNotConfigured, awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
