@@ -52,14 +52,14 @@ class ShoppingListPullRefreshTest {
     }
 
     @Test
-    fun pullDownGesture_invokesOnPullToRefresh() {
-        var pullToRefreshInvoked = false
+    fun pullDownGesture_invokesOnManualSyncRequested() {
+        var manualSyncInvoked = false
         composeRule.setContent {
             ShoppingListScreen(
                 uiState = ShoppingListUiState(),
                 snackbarHostState = SnackbarHostState(),
                 syncCallbacks = ShoppingListSyncCallbacks(
-                    onPullToRefresh = { pullToRefreshInvoked = true }
+                    onManualSyncRequested = { manualSyncInvoked = true }
                 )
             )
         }
@@ -69,14 +69,14 @@ class ShoppingListPullRefreshTest {
             .performTouchInput { swipeDown() }
         composeRule.waitForIdle()
 
-        assertTrue("Pull-to-refresh callback should fire", pullToRefreshInvoked)
+        assertTrue("Pull-to-refresh callback should fire", manualSyncInvoked)
     }
 
     @Test
-    fun pullToRefreshSpinner_visible_whenIsSyncingTrue() {
+    fun pullToRefreshSpinner_visible_whenIsManualSyncTrue() {
         composeRule.setContent {
             ShoppingListScreen(
-                uiState = ShoppingListUiState(isSyncing = true),
+                uiState = ShoppingListUiState(isManualSync = true),
                 snackbarHostState = SnackbarHostState()
             )
         }
@@ -86,10 +86,10 @@ class ShoppingListPullRefreshTest {
     }
 
     @Test
-    fun pullToRefreshSpinner_remainsAvailable_whenIsSyncingFalse() {
+    fun pullToRefreshSpinner_remainsAvailable_whenIsManualSyncFalse() {
         composeRule.setContent {
             ShoppingListScreen(
-                uiState = ShoppingListUiState(isSyncing = false),
+                uiState = ShoppingListUiState(isManualSync = false),
                 snackbarHostState = SnackbarHostState()
             )
         }

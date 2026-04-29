@@ -107,7 +107,7 @@ class ShoppingListItemCallbacks(
 )
 
 class ShoppingListSyncCallbacks(
-    val onPullToRefresh: () -> Unit = {},
+    val onManualSyncRequested: () -> Unit = {},
     val onSyncSettingsClicked: () -> Unit = {}
 )
 
@@ -213,7 +213,7 @@ fun ShoppingListRoute(
     }
     val syncCallbacks = remember(viewModel) {
         ShoppingListSyncCallbacks(
-            onPullToRefresh = viewModel::onPullToRefresh,
+            onManualSyncRequested = viewModel::onManualSyncRequested,
             onSyncSettingsClicked = onNavigateToCalDavConfig
         )
     }
@@ -290,8 +290,8 @@ private fun ShoppingListScreenContent(
     ) {
         val pullState = rememberPullToRefreshState()
         PullToRefreshBox(
-            isRefreshing = uiState.isSyncing,
-            onRefresh = syncCallbacks.onPullToRefresh,
+            isRefreshing = uiState.isManualSync,
+            onRefresh = syncCallbacks.onManualSyncRequested,
             state = pullState,
             modifier = Modifier
                 .fillMaxSize()
@@ -299,7 +299,7 @@ private fun ShoppingListScreenContent(
             indicator = {
                 PullToRefreshDefaults.Indicator(
                     state = pullState,
-                    isRefreshing = uiState.isSyncing,
+                    isRefreshing = uiState.isManualSync,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .testTag(ShoppingListTestTags.PULL_REFRESH_SPINNER)

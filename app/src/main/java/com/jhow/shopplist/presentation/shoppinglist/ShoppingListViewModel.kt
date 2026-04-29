@@ -25,7 +25,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -84,14 +88,38 @@ class ShoppingListViewModel @Inject constructor(
         )
     }
 
-    private val isSyncing = observeSyncStateUseCase()
+    private val isSyncing = observeSyncStateUseCase().stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = false
+    )
     private val isSyncConfigured = getCalDavSyncConfigUseCase()
         .map { it.isReadyToSync }
         .distinctUntilChanged()
+    private val manualSyncLatch = MutableStateFlow(false)
+    private val hasPendingSyncRequest = MutableStateFlow(false)
+
+    init {
+        isSyncing
+            .scan(false to false) { prev, current -> prev.second to current }
+            .onEach { (prev, current) ->
+                if (current) {
+                    hasPendingSyncRequest.value = false
+                }
+                if (prev && !current) {
+                    manualSyncLatch.value = false
+                    hasPendingSyncRequest.value = false
+                }
+            }
+            .launchIn(viewModelScope)
+    }
 
     val uiState: StateFlow<ShoppingListUiState> = combinedState
         .combine(isSyncing) { intermediate, syncing -> intermediate to syncing }
-        .combine(isSyncConfigured) { (intermediate, syncing), configured ->
+        .combine(manualSyncLatch) { (intermediate, syncing), latch ->
+            Triple(intermediate, syncing, latch)
+        }
+        .combine(isSyncConfigured) { (intermediate, syncing, latch), configured ->
             val pendingIds = intermediate.pendingItems.mapTo(linkedSetOf()) { it.id }
             val distinctPurchasedItems = intermediate.purchasedItems.filterNot { it.id in pendingIds }
             val visibleItems = intermediate.pendingItems + distinctPurchasedItems
@@ -103,7 +131,8 @@ class ShoppingListViewModel @Inject constructor(
                 purchasedItems = distinctPurchasedItems,
                 selectedIds = intermediate.selectedIds.intersect(pendingIds),
                 itemPendingDeletion = visibleItems.firstOrNull { it.id == intermediate.itemPendingDeletion?.id },
-                isSyncing = syncing,
+                isManualSync = syncing && latch,
+                isBackgroundSync = syncing && !latch,
                 isSyncConfigured = configured
             )
         }.stateIn(
@@ -128,7 +157,7 @@ class ShoppingListViewModel @Inject constructor(
         viewModelScope.launch {
             addOrReclaimShoppingItemUseCase(currentValue)
             inputValue.value = ""
-            requestShoppingSyncUseCase()
+            requestSync()
         }
     }
 
@@ -145,7 +174,7 @@ class ShoppingListViewModel @Inject constructor(
         viewModelScope.launch {
             markSelectedItemsPurchasedUseCase(ids)
             selectedIds.value = emptySet()
-            requestShoppingSyncUseCase()
+            requestSync()
         }
     }
 
@@ -153,7 +182,7 @@ class ShoppingListViewModel @Inject constructor(
         viewModelScope.launch {
             markPurchasedItemPendingUseCase(id)
             selectedIds.update { it - id }
-            requestShoppingSyncUseCase()
+            requestSync()
         }
     }
 
@@ -172,18 +201,26 @@ class ShoppingListViewModel @Inject constructor(
             deleteShoppingItemUseCase(item.id)
             selectedIds.update { it - item.id }
             itemPendingDeletion.value = null
-            requestShoppingSyncUseCase()
+            requestSync()
         }
     }
 
-    fun onPullToRefresh() {
+    fun onManualSyncRequested() {
         if (!uiState.value.isSyncConfigured) {
             _uiEvents.tryEmit(ShoppingListUiEvent.SyncNotConfigured)
             return
         }
-        viewModelScope.launch {
-            requestShoppingSyncUseCase()
+        manualSyncLatch.value = true
+        if (!isSyncing.value && !hasPendingSyncRequest.value) {
+            viewModelScope.launch {
+                requestSync()
+            }
         }
+    }
+
+    private fun requestSync() {
+        hasPendingSyncRequest.value = true
+        requestShoppingSyncUseCase()
     }
 
     private companion object {
