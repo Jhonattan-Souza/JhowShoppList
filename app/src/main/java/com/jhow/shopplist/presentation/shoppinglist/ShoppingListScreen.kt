@@ -37,7 +37,10 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.ShoppingBag
+import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -45,10 +48,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SwipeToDismissBox
@@ -56,9 +57,6 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -128,6 +126,7 @@ private data class ShoppingItemRowInteractions(
 
 private data class ShoppingListContentLayout(
     val innerPadding: PaddingValues,
+    val inputBarHeight: Dp,
     val bulkFabBottomClearance: Dp
 )
 
@@ -173,26 +172,6 @@ fun ShoppingListRoute(
 ) {
     val uiState = viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val notConfiguredMessage = stringResource(R.string.sync_not_configured)
-    val configureActionLabel = stringResource(R.string.sync_configure_action)
-
-    LaunchedEffect(viewModel) {
-        viewModel.uiEvents.collect { event ->
-            when (event) {
-                ShoppingListUiEvent.SyncNotConfigured -> {
-                    snackbarHostState.currentSnackbarData?.dismiss()
-                    val result = snackbarHostState.showSnackbar(
-                        message = notConfiguredMessage,
-                        actionLabel = configureActionLabel,
-                        duration = SnackbarDuration.Short
-                    )
-                    if (result == SnackbarResult.ActionPerformed) {
-                        onNavigateToCalDavConfig()
-                    }
-                }
-            }
-        }
-    }
 
     val inputCallbacks = remember(viewModel) {
         ShoppingListInputCallbacks(
@@ -254,6 +233,7 @@ fun ShoppingListScreen(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             ShoppingListTopAppBar(
+                uiState = uiState,
                 syncCallbacks = syncCallbacks
             )
         },
@@ -263,11 +243,13 @@ fun ShoppingListScreen(
             uiState = uiState,
             layout = ShoppingListContentLayout(
                 innerPadding = innerPadding,
+                inputBarHeight = with(density) {
+                    if (inputBarContentHeightPx > 0) inputBarContentHeightPx.toDp() else 0.dp
+                },
                 bulkFabBottomClearance = bulkFabBottomClearance
             ),
             inputCallbacks = inputCallbacks,
             itemCallbacks = itemCallbacks,
-            syncCallbacks = syncCallbacks,
             onInputBarHeightChanged = { inputBarContentHeightPx = it }
         )
     }
@@ -280,7 +262,6 @@ private fun ShoppingListScreenContent(
     layout: ShoppingListContentLayout,
     inputCallbacks: ShoppingListInputCallbacks,
     itemCallbacks: ShoppingListItemCallbacks,
-    syncCallbacks: ShoppingListSyncCallbacks,
     onInputBarHeightChanged: (Int) -> Unit
 ) {
     Box(
@@ -288,28 +269,19 @@ private fun ShoppingListScreenContent(
             .fillMaxSize()
             .padding(layout.innerPadding)
     ) {
-        val pullState = rememberPullToRefreshState()
-        PullToRefreshBox(
-            isRefreshing = uiState.isManualSync,
-            onRefresh = syncCallbacks.onManualSyncRequested,
-            state = pullState,
-            modifier = Modifier
-                .fillMaxSize()
-                .testTag(ShoppingListTestTags.PULL_REFRESH_INDICATOR),
-            indicator = {
-                PullToRefreshDefaults.Indicator(
-                    state = pullState,
-                    isRefreshing = uiState.isManualSync,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .testTag(ShoppingListTestTags.PULL_REFRESH_SPINNER)
-                )
-            }
-        ) {
-            ShoppingItemsContent(
-                uiState = uiState,
-                itemCallbacks = itemCallbacks,
-                modifier = Modifier.fillMaxSize()
+        ShoppingItemsContent(
+            uiState = uiState,
+            itemCallbacks = itemCallbacks,
+            modifier = Modifier.fillMaxSize()
+        )
+
+        if (uiState.isManualSync) {
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(bottom = layout.inputBarHeight)
+                    .size(48.dp)
+                    .testTag(ShoppingListTestTags.MANUAL_SYNC_LOADER)
             )
         }
 
@@ -339,13 +311,47 @@ private fun ShoppingListScreenContent(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ShoppingListTopAppBar(
+    uiState: ShoppingListUiState,
     syncCallbacks: ShoppingListSyncCallbacks
 ) {
+    val syncNowLabel = stringResource(R.string.sync_now)
+
     TopAppBar(
-        title = {
-            Text(text = stringResource(R.string.shopping_list_title))
+        title = {},
+        navigationIcon = {
+            Icon(
+                imageVector = Icons.Rounded.ShoppingBag,
+                contentDescription = stringResource(R.string.shopping_list_title),
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .padding(start = 16.dp)
+                    .size(28.dp)
+                    .testTag(ShoppingListTestTags.BRAND_ICON)
+            )
         },
         actions = {
+            if (uiState.isSyncConfigured) {
+                IconButton(
+                    onClick = syncCallbacks.onManualSyncRequested,
+                    modifier = Modifier
+                        .testTag(ShoppingListTestTags.SYNC_BADGE)
+                        .semantics { contentDescription = syncNowLabel }
+                ) {
+                    if (uiState.isManualSync || uiState.isBackgroundSync) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(18.dp)
+                                .testTag(ShoppingListTestTags.SYNC_BADGE_SPINNER),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Rounded.Sync,
+                            contentDescription = null
+                        )
+                    }
+                }
+            }
             IconButton(
                 onClick = syncCallbacks.onSyncSettingsClicked,
                 modifier = Modifier.testTag(ShoppingListTestTags.SYNC_SETTINGS_BUTTON)

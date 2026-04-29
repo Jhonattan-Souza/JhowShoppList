@@ -467,26 +467,14 @@ class ShoppingListViewModelTest {
     }
 
     @Test
-    fun `onManualSyncRequested when not configured does not invoke sync`() = runTest {
+    fun `onManualSyncRequested when not configured still invokes sync`() = runTest {
         calDavConfigRepository.seed(enabled = false)
         advanceUntilIdle()
 
         viewModel.onManualSyncRequested()
         advanceUntilIdle()
 
-        assertEquals(0, syncScheduler.requestCount)
-    }
-
-    @Test
-    fun `onManualSyncRequested when not configured emits SyncNotConfigured event`() = runTest {
-        calDavConfigRepository.seed(enabled = false)
-        advanceUntilIdle()
-
-        viewModel.uiEvents.test {
-            viewModel.onManualSyncRequested()
-            assertEquals(ShoppingListUiEvent.SyncNotConfigured, awaitItem())
-            cancelAndIgnoreRemainingEvents()
-        }
+        assertEquals(1, syncScheduler.requestCount)
     }
 
     private fun samplePendingItem(

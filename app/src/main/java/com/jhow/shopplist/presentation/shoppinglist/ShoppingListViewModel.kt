@@ -16,16 +16,11 @@ import com.jhow.shopplist.domain.usecase.ObserveSyncStateUseCase
 import com.jhow.shopplist.domain.usecase.RequestShoppingSyncUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -57,13 +52,6 @@ class ShoppingListViewModel @Inject constructor(
     observeSyncStateUseCase: ObserveSyncStateUseCase,
     getCalDavSyncConfigUseCase: GetCalDavSyncConfigUseCase
 ) : ViewModel() {
-
-    private val _uiEvents = MutableSharedFlow<ShoppingListUiEvent>(
-        extraBufferCapacity = 1,
-        onBufferOverflow = BufferOverflow.DROP_OLDEST
-    )
-    val uiEvents: SharedFlow<ShoppingListUiEvent> = _uiEvents.asSharedFlow()
-
     private val inputValue = MutableStateFlow("")
     private val selectedIds = MutableStateFlow(emptySet<String>())
     private val itemPendingDeletion = MutableStateFlow<ShoppingItem?>(null)
@@ -206,10 +194,6 @@ class ShoppingListViewModel @Inject constructor(
     }
 
     fun onManualSyncRequested() {
-        if (!uiState.value.isSyncConfigured) {
-            _uiEvents.tryEmit(ShoppingListUiEvent.SyncNotConfigured)
-            return
-        }
         manualSyncLatch.value = true
         if (!isSyncing.value && !hasPendingSyncRequest.value) {
             viewModelScope.launch {
