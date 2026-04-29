@@ -52,7 +52,7 @@ class CalDavShoppingSyncGatewayTest {
 
         assertTrue(discoveryService.createCollectionCalled)
         assertEquals("Groceries", discoveryService.lastListName)
-        assertEquals("https://dav.example.com/Groceries", configRepository.currentConfig.lastResolvedCollectionUrl)
+        assertEquals("https://dav.example.com/Groceries/", configRepository.currentConfig.lastResolvedCollectionUrl)
         assertFalse(configRepository.currentConfig.createListRequested)
         assertTrue(outcome is CalDavSyncOutcome.Success)
         val success = outcome as CalDavSyncOutcome.Success
@@ -319,7 +319,7 @@ class CalDavShoppingSyncGatewayTest {
             createCollectionCalled = true
             lastListName = listName
             if (throwOnCreate) throw RuntimeException("create failed")
-            return "$serverUrl/$listName"
+            return "$serverUrl/$listName/"
         }
 
         override suspend fun fetchTaskItems(
@@ -328,6 +328,27 @@ class CalDavShoppingSyncGatewayTest {
             password: String,
             collectionHref: String
         ): List<RemoteShoppingItemSnapshot> = emptyList()
+
+        override suspend fun upsertTaskItem(
+            serverUrl: String,
+            username: String,
+            password: String,
+            collectionHref: String,
+            item: ShoppingItem
+        ): CalDavTaskUpsertResult = CalDavTaskUpsertResult(
+            remoteUid = item.remoteMetadata.remoteUid ?: item.id,
+            href = "$collectionHref${item.id}.ics",
+            eTag = null,
+            lastModifiedAt = item.updatedAt
+        )
+
+        override suspend fun deleteTaskItem(
+            serverUrl: String,
+            username: String,
+            password: String,
+            href: String,
+            eTag: String?
+        ): CalDavTaskDeleteResult = CalDavTaskDeleteResult(deletedAt = null)
     }
 
     private fun sampleItem(

@@ -103,7 +103,7 @@ class SyncPendingShoppingItemsUseCaseTest {
     }
 
     @Test
-    fun `importRemoteItems skips already known remote uids`() = runTest {
+    fun `importRemoteItems merges known remote uids and imports new ones`() = runTest {
         repository.seedItems(
             listOf(
                 sampleItem(id = "local-milk", syncStatus = SyncStatus.SYNCED, remoteUid = "uid-milk")
@@ -135,7 +135,9 @@ class SyncPendingShoppingItemsUseCaseTest {
         assertEquals(2, allItems.size)
         val milk = allItems.single { it.remoteMetadata.remoteUid == "uid-milk" }
         assertEquals("local-milk", milk.id)
-        assertEquals("local-milk", milk.name)
+        assertEquals("Milk Updated", milk.name)
+        assertEquals(true, milk.isPurchased)
+        assertEquals("etag-milk-2", milk.remoteMetadata.remoteEtag)
     }
 
     @Test

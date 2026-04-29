@@ -91,30 +91,12 @@ class ShoppingListRepositoryImpl @Inject constructor(
         if (items.isEmpty()) return
         withContext(ioDispatcher) {
             val now = System.currentTimeMillis()
-            val knownRemoteUids = shoppingItemDao.getAllItems()
-                .mapNotNull { it.remoteUid }
-                .toSet()
-            val newItems = items.filter { it.remoteUid !in knownRemoteUids }
-            if (newItems.isEmpty()) return@withContext
-            shoppingItemDao.insertItems(
-                newItems.map { remote ->
-                    ShoppingItemEntity(
-                        id = UUID.randomUUID().toString(),
-                        name = remote.summary,
-                        isPurchased = remote.isCompleted,
-                        purchaseCount = if (remote.isCompleted) 1 else 0,
-                        createdAt = remote.lastModifiedAt ?: now,
-                        updatedAt = remote.lastModifiedAt ?: now,
-                        isDeleted = false,
-                        syncStatus = SyncStatus.SYNCED,
-                        remoteUid = remote.remoteUid,
-                        remoteHref = remote.href,
-                        remoteEtag = remote.eTag,
-                        remoteLastModifiedAt = remote.lastModifiedAt,
-                        lastSyncedAt = now
-                    )
+            val existingByRemoteUid = shoppingItemDao.getAllItems()
+                .mapNotNull { existing ->
+                    existing.remoteUid?.let { remoteUid -> remoteUid to existing }
                 }
-            )
+                .toMap()
+            shoppingItemDao.insertItems(items.map { remote -> remote.toEntity(existingByRemoteUid[remote.remoteUid], now) })
         }
     }
 
@@ -133,4 +115,43 @@ class ShoppingListRepositoryImpl @Inject constructor(
             )
         }
     }
+
+    private fun RemoteShoppingItemSnapshot.toEntity(
+        existing: ShoppingItemEntity?,
+        now: Long
+    ): ShoppingItemEntity = existing?.mergeRemote(this, now) ?: ShoppingItemEntity(
+        id = UUID.randomUUID().toString(),
+        name = summary,
+        isPurchased = isCompleted,
+        purchaseCount = if (isCompleted) 1 else 0,
+        createdAt = lastModifiedAt ?: now,
+        updatedAt = lastModifiedAt ?: now,
+        isDeleted = false,
+        syncStatus = SyncStatus.SYNCED,
+        remoteUid = remoteUid,
+        remoteHref = href,
+        remoteEtag = eTag,
+        remoteLastModifiedAt = lastModifiedAt,
+        lastSyncedAt = now
+    )
+
+    private fun ShoppingItemEntity.mergeRemote(
+        remote: RemoteShoppingItemSnapshot,
+        now: Long
+    ): ShoppingItemEntity = copy(
+        name = remote.summary,
+        normalizedName = ShoppingSearch.normalize(remote.summary),
+        isPurchased = remote.isCompleted,
+        purchaseCount = updatedPurchaseCount(remote.isCompleted),
+        updatedAt = remote.lastModifiedAt ?: now,
+        isDeleted = false,
+        syncStatus = SyncStatus.SYNCED,
+        remoteHref = remote.href,
+        remoteEtag = remote.eTag,
+        remoteLastModifiedAt = remote.lastModifiedAt,
+        lastSyncedAt = now
+    )
+
+    private fun ShoppingItemEntity.updatedPurchaseCount(isCompletedRemotely: Boolean): Int =
+        if (isCompletedRemotely && !isPurchased) purchaseCount + 1 else purchaseCount
 }

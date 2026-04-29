@@ -26,7 +26,7 @@ class WorkManagerShoppingSyncScheduler @Inject constructor(
 
         workManager.enqueueUniqueWork(
             ShoppingSyncWorker.UNIQUE_WORK_NAME,
-            ExistingWorkPolicy.KEEP,
+            ExistingWorkPolicy.APPEND_OR_REPLACE,
             request
         )
     }
