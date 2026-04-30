@@ -18,7 +18,12 @@ repo_root = Path(sys.argv[2])
 
 def load_json(path: Path) -> dict[str, str]:
     with path.open(encoding="utf-8") as handle:
-        return json.load(handle)
+        raw = handle.read()
+    stripped = "\n".join(
+        line for line in raw.splitlines()
+        if not line.lstrip().startswith("//")
+    )
+    return json.loads(stripped)
 
 
 def write_json(path: Path, payload: dict[str, str]) -> None:
