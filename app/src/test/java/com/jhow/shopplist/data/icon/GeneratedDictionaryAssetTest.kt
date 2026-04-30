@@ -62,6 +62,11 @@ class GeneratedDictionaryAssetTest {
     @Test
     fun `generated dictionaries keep overlay only corrections and additions`() {
         assertResolves(
+            "aipim" to IconBucket.VEGETABLE,
+            "macaxeira" to IconBucket.VEGETABLE,
+            "chuchu" to IconBucket.VEGETABLE,
+            "polenta" to IconBucket.GRAIN,
+            "coca" to IconBucket.BEVERAGES_COLD,
             "shampoo" to IconBucket.PERSONAL_CARE,
             "toothpaste" to IconBucket.PERSONAL_CARE,
             "ração" to IconBucket.PET,

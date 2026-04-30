@@ -30,7 +30,7 @@ def write_json(path: Path, payload: dict[str, str]) -> None:
 
 for language in ("pt", "en"):
     base_path = script_dir / ".cache" / f"{language}.base.json"
-    overlay_path = script_dir / "overlays" / f"{language}.json"
+    overlay_path = script_dir / "overlays" / f"{language}.overlay.json"
     output_path = repo_root / "app" / "src" / "main" / "assets" / "icons" / f"dictionary-{language}.json"
 
     merged = load_json(base_path) | load_json(overlay_path)
