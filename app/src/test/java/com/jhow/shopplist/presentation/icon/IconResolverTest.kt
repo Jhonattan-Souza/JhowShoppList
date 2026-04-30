@@ -12,7 +12,7 @@ class IconResolverTest {
     private val dictionary = mapOf(
         "leite" to IconBucket.DAIRY,
         "milk" to IconBucket.DAIRY,
-        "arroz" to IconBucket.PANTRY_CANNED,
+        "arroz" to IconBucket.PANTRY,
     )
     private val matcher = DefaultIconMatcher(dictionary, DefaultTextNormalizer())
     private val resolver = IconResolver(matcher)

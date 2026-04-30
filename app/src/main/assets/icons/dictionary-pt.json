@@ -5,7 +5,7 @@
   "maca": "fruit",
   "pão": "bread",
   "pao": "bread",
-  "arroz": "pantry-canned",
-  "feijão": "pantry-canned",
-  "feijao": "pantry-canned"
+  "arroz": "pantry",
+  "feijão": "pantry",
+  "feijao": "pantry"
 }

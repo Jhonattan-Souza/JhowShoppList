@@ -4,6 +4,6 @@
   "apple": "fruit",
   "banana": "fruit",
   "bread": "bread",
-  "rice": "pantry-canned",
-  "beans": "pantry-canned"
+  "rice": "pantry",
+  "beans": "pantry"
 }
