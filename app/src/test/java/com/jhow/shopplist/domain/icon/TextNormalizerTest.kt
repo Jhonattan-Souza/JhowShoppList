@@ -7,6 +7,8 @@ class TextNormalizerTest {
 
     private val normalizer = DefaultTextNormalizer()
 
+    // ── Trim + lowercase ──────────────────────────────────────────────────────
+
     @Test
     fun `lowercases simple term`() {
         assertEquals("leite", normalizer.normalize("Leite"))
@@ -43,17 +45,143 @@ class TextNormalizerTest {
     }
 
     @Test
-    fun `internal whitespace is preserved`() {
-        assertEquals("pao de queijo", normalizer.normalize("Pao de Queijo"))
-    }
-
-    @Test
     fun `single character is lowercased`() {
         assertEquals("a", normalizer.normalize("A"))
     }
 
+    // ── NFD diacritic stripping ───────────────────────────────────────────────
+
     @Test
-    fun `numeric characters are preserved`() {
-        assertEquals("2kg arroz", normalizer.normalize("2kg Arroz"))
+    fun `strips cedilla from maca`() {
+        assertEquals("maca", normalizer.normalize("maçã"))
+    }
+
+    @Test
+    fun `strips acute accent from cafe`() {
+        assertEquals("cafe", normalizer.normalize("café"))
+    }
+
+    @Test
+    fun `strips tilde from feijao`() {
+        assertEquals("feijao", normalizer.normalize("feijão"))
+    }
+
+    @Test
+    fun `strips circumflex from pao`() {
+        assertEquals("pao", normalizer.normalize("pão"))
+    }
+
+    @Test
+    fun `strips accent from acucar`() {
+        assertEquals("acucar", normalizer.normalize("açúcar"))
+    }
+
+    @Test
+    fun `term without diacritics is unchanged`() {
+        assertEquals("cenoura", normalizer.normalize("cenoura"))
+    }
+
+    @Test
+    fun `mixed diacritics and plain chars stripped correctly`() {
+        assertEquals("maca verde", normalizer.normalize("maçã verde"))
+    }
+
+    // ── Quantity and unit token removal ───────────────────────────────────────
+
+    @Test
+    fun `strips leading quantity kg`() {
+        assertEquals("arroz", normalizer.normalize("2kg arroz"))
+    }
+
+    @Test
+    fun `strips leading quantity ml`() {
+        assertEquals("leite", normalizer.normalize("500ml leite"))
+    }
+
+    @Test
+    fun `strips trailing quantity kg`() {
+        assertEquals("arroz", normalizer.normalize("arroz 2kg"))
+    }
+
+    @Test
+    fun `strips quantity g`() {
+        assertEquals("queijo", normalizer.normalize("100g queijo"))
+    }
+
+    @Test
+    fun `strips multiplier x`() {
+        assertEquals("banana", normalizer.normalize("2x banana"))
+    }
+
+    @Test
+    fun `strips standalone pacote`() {
+        assertEquals("macarrao", normalizer.normalize("pacote macarrao"))
+    }
+
+    @Test
+    fun `strips standalone pack`() {
+        assertEquals("chips", normalizer.normalize("pack chips"))
+    }
+
+    @Test
+    fun `strips quantity from multi-word item leaving rest intact`() {
+        assertEquals("arroz integral", normalizer.normalize("2kg arroz integral"))
+    }
+
+    @Test
+    fun `2kg arroz integral and bare arroz normalize to same prefix`() {
+        val withQty = normalizer.normalize("2kg arroz integral")
+        val bare = normalizer.normalize("arroz")
+        assertEquals("arroz", bare)
+        assertEquals(true, withQty.startsWith(bare))
+    }
+
+    // ── Stopword removal ──────────────────────────────────────────────────────
+
+    @Test
+    fun `removes PT preposition do`() {
+        assertEquals("leite campo", normalizer.normalize("leite do campo"))
+    }
+
+    @Test
+    fun `removes PT preposition de`() {
+        assertEquals("iogurte morango", normalizer.normalize("iogurte de morango"))
+    }
+
+    @Test
+    fun `removes PT preposition da`() {
+        assertEquals("pao vovo", normalizer.normalize("pao da vovo"))
+    }
+
+    @Test
+    fun `removes PT conjunction com`() {
+        assertEquals("feijao arroz", normalizer.normalize("feijao com arroz"))
+    }
+
+    @Test
+    fun `removes EN preposition of`() {
+        assertEquals("bread life", normalizer.normalize("bread of life"))
+    }
+
+    @Test
+    fun `removes EN preposition the`() {
+        assertEquals("best cheese", normalizer.normalize("the best cheese"))
+    }
+
+    @Test
+    fun `removes stopwords and strips diacritics combined`() {
+        assertEquals("pao queijo", normalizer.normalize("pão de queijo"))
+    }
+
+    @Test
+    fun `removes quantity and stopword combined`() {
+        assertEquals("arroz feijao", normalizer.normalize("2kg arroz com feijao"))
+    }
+
+    // ── Space collapsing ──────────────────────────────────────────────────────
+
+    @Test
+    fun `collapses multiple internal spaces`() {
+        assertEquals("arroz branco", normalizer.normalize("arroz  branco"))
     }
 }
