@@ -10,6 +10,9 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.jhow.shopplist.domain.icon.IconBucket
+import com.jhow.shopplist.domain.icon.IconMatcher
+import com.jhow.shopplist.presentation.icon.IconResolver
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -17,15 +20,23 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class ShoppingListTopBarTest {
+
     @get:Rule
     val composeRule = createAndroidComposeRule<ComponentActivity>()
+
+    private val fakeIconResolver = IconResolver(
+        object : IconMatcher {
+            override fun match(itemName: String): IconBucket = IconBucket.GENERIC
+        }
+    )
 
     @Test
     fun topAppBar_showsSettingsGearIcon_withTestTag() {
         composeRule.setContent {
             ShoppingListScreen(
                 uiState = ShoppingListUiState(),
-                snackbarHostState = SnackbarHostState()
+                snackbarHostState = SnackbarHostState(),
+                iconResolver = fakeIconResolver
             )
         }
         composeRule.waitForIdle()
@@ -38,7 +49,8 @@ class ShoppingListTopBarTest {
         composeRule.setContent {
             ShoppingListScreen(
                 uiState = ShoppingListUiState(),
-                snackbarHostState = SnackbarHostState()
+                snackbarHostState = SnackbarHostState(),
+                iconResolver = fakeIconResolver
             )
         }
         composeRule.waitForIdle()
@@ -51,7 +63,8 @@ class ShoppingListTopBarTest {
         composeRule.setContent {
             ShoppingListScreen(
                 uiState = ShoppingListUiState(isSyncConfigured = false),
-                snackbarHostState = SnackbarHostState()
+                snackbarHostState = SnackbarHostState(),
+                iconResolver = fakeIconResolver
             )
         }
         composeRule.waitForIdle()
@@ -65,7 +78,8 @@ class ShoppingListTopBarTest {
         composeRule.setContent {
             ShoppingListScreen(
                 uiState = ShoppingListUiState(isSyncConfigured = true),
-                snackbarHostState = SnackbarHostState()
+                snackbarHostState = SnackbarHostState(),
+                iconResolver = fakeIconResolver
             )
         }
         composeRule.waitForIdle()
@@ -84,7 +98,8 @@ class ShoppingListTopBarTest {
                 snackbarHostState = SnackbarHostState(),
                 syncCallbacks = ShoppingListSyncCallbacks(
                     onSyncSettingsClicked = { settingsClicked = true }
-                )
+                ),
+                iconResolver = fakeIconResolver
             )
         }
         composeRule.waitForIdle()
@@ -103,7 +118,8 @@ class ShoppingListTopBarTest {
                 snackbarHostState = SnackbarHostState(),
                 syncCallbacks = ShoppingListSyncCallbacks(
                     onManualSyncRequested = { manualSyncInvoked = true }
-                )
+                ),
+                iconResolver = fakeIconResolver
             )
         }
         composeRule.waitForIdle()
@@ -119,7 +135,8 @@ class ShoppingListTopBarTest {
         composeRule.setContent {
             ShoppingListScreen(
                 uiState = ShoppingListUiState(isSyncConfigured = true, isManualSync = true),
-                snackbarHostState = SnackbarHostState()
+                snackbarHostState = SnackbarHostState(),
+                iconResolver = fakeIconResolver
             )
         }
         composeRule.waitForIdle()
@@ -133,7 +150,8 @@ class ShoppingListTopBarTest {
         composeRule.setContent {
             ShoppingListScreen(
                 uiState = ShoppingListUiState(isSyncConfigured = true, isBackgroundSync = true),
-                snackbarHostState = SnackbarHostState()
+                snackbarHostState = SnackbarHostState(),
+                iconResolver = fakeIconResolver
             )
         }
         composeRule.waitForIdle()
