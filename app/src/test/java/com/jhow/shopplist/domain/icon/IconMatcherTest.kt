@@ -21,12 +21,12 @@ class IconMatcherTest {
         "pao" to IconBucket.BREAD,
         "bread" to IconBucket.BREAD,
         "bisnaguinha" to IconBucket.BREAD,
-        "arroz" to IconBucket.PANTRY_CANNED,
-        "rice" to IconBucket.PANTRY_CANNED,
-        "feijao" to IconBucket.PANTRY_CANNED,
-        "beans" to IconBucket.PANTRY_CANNED,
-        "macarrao" to IconBucket.PANTRY_CANNED,
-        "pasta" to IconBucket.PANTRY_CANNED,
+        "arroz" to IconBucket.PANTRY,
+        "rice" to IconBucket.PANTRY,
+        "feijao" to IconBucket.PANTRY,
+        "beans" to IconBucket.PANTRY,
+        "macarrao" to IconBucket.PANTRY,
+        "pasta" to IconBucket.PANTRY,
     )
 
     private val aliasMap = mapOf(
@@ -67,7 +67,7 @@ class IconMatcherTest {
 
     @Test
     fun `exact match after diacritic normalization feijao`() {
-        assertEquals(IconBucket.PANTRY_CANNED, matcher.match("feijão"))
+        assertEquals(IconBucket.PANTRY, matcher.match("feijão"))
     }
 
     // ── Alias match ───────────────────────────────────────────────────────────
@@ -91,17 +91,17 @@ class IconMatcherTest {
 
     @Test
     fun `multi-word item with diacritics resolved via token match`() {
-        assertEquals(IconBucket.PANTRY_CANNED, matcher.match("feijão preto"))
+        assertEquals(IconBucket.PANTRY, matcher.match("feijão preto"))
     }
 
     @Test
     fun `leading quantity stripped before token match`() {
-        assertEquals(IconBucket.PANTRY_CANNED, matcher.match("2kg arroz"))
+        assertEquals(IconBucket.PANTRY, matcher.match("2kg arroz"))
     }
 
     @Test
     fun `leading quantity and adjective stripped for token match`() {
-        assertEquals(IconBucket.PANTRY_CANNED, matcher.match("2kg arroz integral"))
+        assertEquals(IconBucket.PANTRY, matcher.match("2kg arroz integral"))
     }
 
     @Test
@@ -111,7 +111,7 @@ class IconMatcherTest {
 
     @Test
     fun `trailing quantity stripped before token match`() {
-        assertEquals(IconBucket.PANTRY_CANNED, matcher.match("feijao 500g"))
+        assertEquals(IconBucket.PANTRY, matcher.match("feijao 500g"))
     }
 
     @Test
@@ -131,17 +131,17 @@ class IconMatcherTest {
 
     @Test
     fun `arroz branco resolved via token match`() {
-        assertEquals(IconBucket.PANTRY_CANNED, matcher.match("arroz branco"))
+        assertEquals(IconBucket.PANTRY, matcher.match("arroz branco"))
     }
 
     @Test
     fun `arroz integral resolved via token match`() {
-        assertEquals(IconBucket.PANTRY_CANNED, matcher.match("arroz integral"))
+        assertEquals(IconBucket.PANTRY, matcher.match("arroz integral"))
     }
 
     @Test
     fun `feijao carioca resolved via token match`() {
-        assertEquals(IconBucket.PANTRY_CANNED, matcher.match("feijao carioca"))
+        assertEquals(IconBucket.PANTRY, matcher.match("feijao carioca"))
     }
 
     @Test
@@ -325,11 +325,11 @@ class IconMatcherTest {
     }
 
     @Test
-    fun `pantry terms resolve to pantry canned bucket`() {
-        assertEquals(IconBucket.PANTRY_CANNED, matcher.match("arroz"))
-        assertEquals(IconBucket.PANTRY_CANNED, matcher.match("rice"))
-        assertEquals(IconBucket.PANTRY_CANNED, matcher.match("feijão"))
-        assertEquals(IconBucket.PANTRY_CANNED, matcher.match("feijao"))
-        assertEquals(IconBucket.PANTRY_CANNED, matcher.match("beans"))
+    fun `pantry terms resolve to pantry bucket`() {
+        assertEquals(IconBucket.PANTRY, matcher.match("arroz"))
+        assertEquals(IconBucket.PANTRY, matcher.match("rice"))
+        assertEquals(IconBucket.PANTRY, matcher.match("feijão"))
+        assertEquals(IconBucket.PANTRY, matcher.match("feijao"))
+        assertEquals(IconBucket.PANTRY, matcher.match("beans"))
     }
 }

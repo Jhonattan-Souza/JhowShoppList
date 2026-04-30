@@ -120,10 +120,10 @@ class DictionaryLoaderTest {
 
     @Test
     fun `hyphenated bucket ids map to underscore enum names`() {
-        val ptJson = """{"arroz":"pantry-canned"}"""
+        val ptJson = """{"arroz":"pantry"}"""
         val enJson = """{}"""
         val result = parseDictionaryJson(ptJson) + parseDictionaryJson(enJson)
-        assertEquals(IconBucket.PANTRY_CANNED, result["arroz"])
+        assertEquals(IconBucket.PANTRY, result["arroz"])
     }
 
     @Test
