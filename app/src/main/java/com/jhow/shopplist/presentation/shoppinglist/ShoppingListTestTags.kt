@@ -37,4 +37,6 @@ object ShoppingListTestTags {
     fun swipePurchasedItem(id: String): String = "swipe_purchased_item_$id"
 
     fun suggestionItem(name: String): String = "suggestion_item_$name"
+
+    const val ITEM_ICON = "item_icon"
 }

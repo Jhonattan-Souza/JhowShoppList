@@ -6,11 +6,11 @@ import org.junit.Test
 
 class ShoppingListScreenVisualsTest {
     @Test
-    fun `selected pending rows use secondary container colors`() {
+    fun `selected pending rows use primary container colors`() {
         assertEquals(
             PendingItemRowColorRoles(
-                container = ShoppingListColorRole.SecondaryContainer,
-                content = ShoppingListColorRole.OnSecondaryContainer
+                container = ShoppingListColorRole.PrimaryContainer,
+                content = ShoppingListColorRole.OnPrimaryContainer
             ),
             pendingItemRowColorRoles(isSelected = true)
         )

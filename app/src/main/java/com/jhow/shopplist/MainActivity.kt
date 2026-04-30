@@ -12,12 +12,18 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.jhow.shopplist.navigation.Routes
 import com.jhow.shopplist.presentation.caldavconfig.CalDavConfigRoute
+import com.jhow.shopplist.presentation.icon.IconResolver
 import com.jhow.shopplist.presentation.shoppinglist.ShoppingListRoute
 import com.jhow.shopplist.ui.theme.JhowShoppListTheme
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var iconResolver: IconResolver
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -33,7 +39,8 @@ class MainActivity : ComponentActivity() {
                             ShoppingListRoute(
                                 onNavigateToCalDavConfig = {
                                     navController.navigate(Routes.CALDAV_CONFIG)
-                                }
+                                },
+                                iconResolver = iconResolver
                             )
                         }
                         composable(Routes.CALDAV_CONFIG) {

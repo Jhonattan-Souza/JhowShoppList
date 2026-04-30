@@ -34,8 +34,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AddTask
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.ShoppingBag
 import androidx.compose.material.icons.rounded.Sync
@@ -88,6 +86,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jhow.shopplist.R
 import com.jhow.shopplist.domain.model.ShoppingItem
+import com.jhow.shopplist.presentation.icon.IconResolver
 
 class ShoppingListInputCallbacks(
     val onValueChange: (String) -> Unit = {},
@@ -133,6 +132,8 @@ private data class ShoppingListContentLayout(
 internal val shoppingListWideSurfaceShape: Shape = RoundedCornerShape(percent = 50)
 
 internal enum class ShoppingListColorRole {
+    PrimaryContainer,
+    OnPrimaryContainer,
     SecondaryContainer,
     OnSecondaryContainer,
     SurfaceContainerLow,
@@ -147,8 +148,8 @@ internal data class PendingItemRowColorRoles(
 internal fun pendingItemRowColorRoles(isSelected: Boolean): PendingItemRowColorRoles =
     if (isSelected) {
         PendingItemRowColorRoles(
-            container = ShoppingListColorRole.SecondaryContainer,
-            content = ShoppingListColorRole.OnSecondaryContainer
+            container = ShoppingListColorRole.PrimaryContainer,
+            content = ShoppingListColorRole.OnPrimaryContainer
         )
     } else {
         PendingItemRowColorRoles(
@@ -159,6 +160,8 @@ internal fun pendingItemRowColorRoles(isSelected: Boolean): PendingItemRowColorR
 
 @Composable
 private fun ShoppingListColorRole.resolve() = when (this) {
+    ShoppingListColorRole.PrimaryContainer -> MaterialTheme.colorScheme.primaryContainer
+    ShoppingListColorRole.OnPrimaryContainer -> MaterialTheme.colorScheme.onPrimaryContainer
     ShoppingListColorRole.SecondaryContainer -> MaterialTheme.colorScheme.secondaryContainer
     ShoppingListColorRole.OnSecondaryContainer -> MaterialTheme.colorScheme.onSecondaryContainer
     ShoppingListColorRole.SurfaceContainerLow -> MaterialTheme.colorScheme.surfaceContainerLow
@@ -168,7 +171,8 @@ private fun ShoppingListColorRole.resolve() = when (this) {
 @Composable
 fun ShoppingListRoute(
     onNavigateToCalDavConfig: () -> Unit,
-    viewModel: ShoppingListViewModel = hiltViewModel()
+    viewModel: ShoppingListViewModel = hiltViewModel(),
+    iconResolver: IconResolver
 ) {
     val uiState = viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -201,7 +205,8 @@ fun ShoppingListRoute(
         snackbarHostState = snackbarHostState,
         inputCallbacks = inputCallbacks,
         itemCallbacks = itemCallbacks,
-        syncCallbacks = syncCallbacks
+        syncCallbacks = syncCallbacks,
+        iconResolver = iconResolver
     )
 }
 
@@ -214,6 +219,7 @@ fun ShoppingListScreen(
     inputCallbacks: ShoppingListInputCallbacks = ShoppingListInputCallbacks(),
     itemCallbacks: ShoppingListItemCallbacks = ShoppingListItemCallbacks(),
     syncCallbacks: ShoppingListSyncCallbacks = ShoppingListSyncCallbacks(),
+    iconResolver: IconResolver
 ) {
     val focusManager = LocalFocusManager.current
     var inputBarContentHeightPx by remember { mutableIntStateOf(0) }
@@ -250,7 +256,8 @@ fun ShoppingListScreen(
             ),
             inputCallbacks = inputCallbacks,
             itemCallbacks = itemCallbacks,
-            onInputBarHeightChanged = { inputBarContentHeightPx = it }
+            onInputBarHeightChanged = { inputBarContentHeightPx = it },
+            iconResolver = iconResolver
         )
     }
 }
@@ -262,7 +269,8 @@ private fun ShoppingListScreenContent(
     layout: ShoppingListContentLayout,
     inputCallbacks: ShoppingListInputCallbacks,
     itemCallbacks: ShoppingListItemCallbacks,
-    onInputBarHeightChanged: (Int) -> Unit
+    onInputBarHeightChanged: (Int) -> Unit,
+    iconResolver: IconResolver
 ) {
     Box(
         modifier = Modifier
@@ -272,7 +280,8 @@ private fun ShoppingListScreenContent(
         ShoppingItemsContent(
             uiState = uiState,
             itemCallbacks = itemCallbacks,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            iconResolver = iconResolver
         )
 
         if (uiState.isManualSync) {
@@ -518,7 +527,8 @@ private fun BulkPurchaseFab(
 private fun ShoppingItemsContent(
     uiState: ShoppingListUiState,
     itemCallbacks: ShoppingListItemCallbacks,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    iconResolver: IconResolver
 ) {
     val swipeResetTrigger = uiState.itemPendingDeletion?.id.orEmpty()
     val emptyPendingTitle = stringResource(R.string.empty_pending_title)
@@ -541,7 +551,8 @@ private fun ShoppingItemsContent(
             selectedIds = uiState.selectedIds,
             swipeResetTrigger = swipeResetTrigger,
             itemCallbacks = itemCallbacks,
-            emptyPendingTitle = emptyPendingTitle
+            emptyPendingTitle = emptyPendingTitle,
+            iconResolver = iconResolver
         )
 
         item(key = ShoppingListTestTags.SECTION_DIVIDER) {
@@ -559,7 +570,8 @@ private fun ShoppingItemsContent(
             purchasedItems = uiState.purchasedItems,
             swipeResetTrigger = swipeResetTrigger,
             itemCallbacks = itemCallbacks,
-            emptyPurchasedTitle = emptyPurchasedTitle
+            emptyPurchasedTitle = emptyPurchasedTitle,
+            iconResolver = iconResolver
         )
     }
 }
@@ -569,7 +581,8 @@ private fun androidx.compose.foundation.lazy.LazyListScope.pendingItemsSection(
     selectedIds: Set<String>,
     swipeResetTrigger: String,
     itemCallbacks: ShoppingListItemCallbacks,
-    emptyPendingTitle: String
+    emptyPendingTitle: String,
+    iconResolver: IconResolver
 ) {
     if (pendingItems.isEmpty()) {
         item(key = ShoppingListTestTags.EMPTY_STATE) {
@@ -581,7 +594,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.pendingItemsSection(
         return
     }
 
-    items(
+        items(
         items = pendingItems,
         key = { item -> item.id }
     ) { item ->
@@ -591,6 +604,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.pendingItemsSection(
             onClick = { itemCallbacks.onPendingItemClick(item.id) },
             onDeleteRequested = { itemCallbacks.onDeleteItemRequested(item) },
             swipeResetTrigger = swipeResetTrigger,
+            iconResolver = iconResolver,
             modifier = Modifier.animateItem()
         )
     }
@@ -600,7 +614,8 @@ private fun androidx.compose.foundation.lazy.LazyListScope.purchasedItemsSection
     purchasedItems: List<ShoppingItem>,
     swipeResetTrigger: String,
     itemCallbacks: ShoppingListItemCallbacks,
-    emptyPurchasedTitle: String
+    emptyPurchasedTitle: String,
+    iconResolver: IconResolver
 ) {
     if (purchasedItems.isEmpty()) {
         item(key = "purchased_empty") {
@@ -620,6 +635,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.purchasedItemsSection
             onClick = { itemCallbacks.onPurchasedItemClick(item.id) },
             onDeleteRequested = { itemCallbacks.onDeleteItemRequested(item) },
             swipeResetTrigger = swipeResetTrigger,
+            iconResolver = iconResolver,
             modifier = Modifier.animateItem()
         )
     }
@@ -691,6 +707,7 @@ private fun PendingItemRow(
     onClick: () -> Unit,
     onDeleteRequested: () -> Unit,
     swipeResetTrigger: String,
+    iconResolver: IconResolver,
     modifier: Modifier = Modifier
 ) {
     val colorRoles = pendingItemRowColorRoles(isSelected)
@@ -708,7 +725,7 @@ private fun PendingItemRow(
     ShoppingItemRow(
         name = item.name,
         visuals = ShoppingItemRowVisuals(
-            leadingIcon = if (isSelected) Icons.Rounded.Check else Icons.Rounded.RadioButtonUnchecked,
+            leadingIcon = iconResolver.resolveIcon(item.name),
             containerColor = containerColor,
             contentColor = contentColor
         ),
@@ -731,12 +748,13 @@ private fun PurchasedItemRow(
     onClick: () -> Unit,
     onDeleteRequested: () -> Unit,
     swipeResetTrigger: String,
+    iconResolver: IconResolver,
     modifier: Modifier = Modifier
 ) {
     ShoppingItemRow(
         name = item.name,
         visuals = ShoppingItemRowVisuals(
-            leadingIcon = Icons.Rounded.History,
+            leadingIcon = iconResolver.resolveIcon(item.name),
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             contentColor = MaterialTheme.colorScheme.onSurface,
             textDecoration = TextDecoration.LineThrough,
@@ -805,7 +823,9 @@ private fun ShoppingItemRow(
                 imageVector = visuals.leadingIcon,
                 contentDescription = null,
                 tint = visuals.contentColor,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier
+                    .size(20.dp)
+                    .testTag(ShoppingListTestTags.ITEM_ICON)
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
