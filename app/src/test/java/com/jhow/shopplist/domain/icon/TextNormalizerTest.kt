@@ -178,6 +178,29 @@ class TextNormalizerTest {
         assertEquals("arroz feijao", normalizer.normalize("2kg arroz com feijao"))
     }
 
+    // ── Decimal and space-separated quantity formats ───────────────────────────
+
+    @Test
+    fun `strips decimal dot quantity`() {
+        assertEquals("arroz", normalizer.normalize("1.5kg arroz"))
+    }
+
+    @Test
+    fun `strips decimal comma quantity (PT-BR style)`() {
+        assertEquals("leite", normalizer.normalize("1,5l leite"))
+    }
+
+    @Test
+    fun `strips space-separated number and unit`() {
+        // "500 ml leite" → "500" is a bare number token, "ml" is a standalone unit
+        assertEquals("leite", normalizer.normalize("500 ml leite"))
+    }
+
+    @Test
+    fun `strips standalone unit ml`() {
+        assertEquals("leite", normalizer.normalize("leite ml"))
+    }
+
     // ── Space collapsing ──────────────────────────────────────────────────────
 
     @Test

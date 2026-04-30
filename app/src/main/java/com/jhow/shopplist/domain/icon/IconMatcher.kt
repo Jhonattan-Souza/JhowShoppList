@@ -7,7 +7,7 @@ interface IconMatcher {
 
 /**
  * Stateful singleton that resolves item names to icon buckets via a shallow cascade:
- * exact → alias → token-per-token → generic.
+ * exact → alias → token match (each token in order) → generic.
  *
  * Dictionary keys are normalized on ingestion so queries and keys use the same
  * representation. The cascade never uses stemming, fuzzy matching, or ML.
@@ -15,11 +15,13 @@ interface IconMatcher {
 class DefaultIconMatcher(
     dictionary: Map<String, IconBucket>,
     private val normalizer: TextNormalizer,
-    private val aliasMap: Map<String, IconBucket> = emptyMap()
+    aliasMap: Map<String, IconBucket> = emptyMap()
 ) : IconMatcher {
 
     @Volatile
     private var dictionaryRef: Map<String, IconBucket> = dictionary.normalizeKeys()
+
+    private val normalizedAliasMap: Map<String, IconBucket> = aliasMap.normalizeKeys()
 
     override fun updateDictionary(newDictionary: Map<String, IconBucket>): Boolean {
         val normalized = newDictionary.normalizeKeys()
@@ -33,9 +35,9 @@ class DefaultIconMatcher(
         if (normalized.isEmpty()) return IconBucket.GENERIC
 
         return dictionaryRef[normalized]
-            ?: aliasMap[normalized]
+            ?: normalizedAliasMap[normalized]
             ?: normalized.split(" ").filter { it.isNotBlank() }
-                .firstNotNullOfOrNull { token -> dictionaryRef[token] ?: aliasMap[token] }
+                .firstNotNullOfOrNull { token -> dictionaryRef[token] ?: normalizedAliasMap[token] }
             ?: IconBucket.GENERIC
     }
 

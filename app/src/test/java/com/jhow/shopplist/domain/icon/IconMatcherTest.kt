@@ -85,12 +85,12 @@ class IconMatcherTest {
     // ── Token-head match ──────────────────────────────────────────────────────
 
     @Test
-    fun `multi-word item resolved via head token`() {
+    fun `multi-word item resolved via token match`() {
         assertEquals(IconBucket.DAIRY, matcher.match("leite integral"))
     }
 
     @Test
-    fun `multi-word item with diacritics resolved via head token`() {
+    fun `multi-word item with diacritics resolved via token match`() {
         assertEquals(IconBucket.PANTRY_CANNED, matcher.match("feijão preto"))
     }
 
@@ -120,81 +120,87 @@ class IconMatcherTest {
     }
 
     @Test
-    fun `leite integral resolved via head token`() {
+    fun `leite integral resolved via token match`() {
         assertEquals(IconBucket.DAIRY, matcher.match("leite integral"))
     }
 
     @Test
-    fun `leite desnatado resolved via head token`() {
+    fun `leite desnatado resolved via token match`() {
         assertEquals(IconBucket.DAIRY, matcher.match("leite desnatado"))
     }
 
     @Test
-    fun `arroz branco resolved via head token`() {
+    fun `arroz branco resolved via token match`() {
         assertEquals(IconBucket.PANTRY_CANNED, matcher.match("arroz branco"))
     }
 
     @Test
-    fun `arroz integral resolved via head token`() {
+    fun `arroz integral resolved via token match`() {
         assertEquals(IconBucket.PANTRY_CANNED, matcher.match("arroz integral"))
     }
 
     @Test
-    fun `feijao carioca resolved via head token`() {
+    fun `feijao carioca resolved via token match`() {
         assertEquals(IconBucket.PANTRY_CANNED, matcher.match("feijao carioca"))
     }
 
     @Test
-    fun `banana nanica resolved via head token`() {
+    fun `banana nanica resolved via token match`() {
         assertEquals(IconBucket.FRUIT, matcher.match("banana nanica"))
     }
 
     @Test
-    fun `banana prata resolved via head token`() {
+    fun `banana prata resolved via token match`() {
         assertEquals(IconBucket.FRUIT, matcher.match("banana prata"))
     }
 
     @Test
-    fun `iogurte grego resolved via head token`() {
+    fun `iogurte grego resolved via token match`() {
         assertEquals(IconBucket.DAIRY, matcher.match("iogurte grego"))
     }
 
     @Test
-    fun `queijo mussarela resolved via head token`() {
+    fun `queijo mussarela resolved via token match`() {
         assertEquals(IconBucket.DAIRY, matcher.match("queijo mussarela"))
     }
 
     @Test
-    fun `pao de queijo resolved via head token after stopword removal`() {
+    fun `pao de queijo resolved via token match after stopword removal`() {
         // "pao de queijo" → stopword "de" removed → "pao queijo" → token "pao" → BREAD
         assertEquals(IconBucket.BREAD, matcher.match("pão de queijo"))
     }
 
     @Test
-    fun `iogurte de morango resolved via head token after stopword removal`() {
+    fun `iogurte de morango resolved via token match after stopword removal`() {
         assertEquals(IconBucket.DAIRY, matcher.match("iogurte de morango"))
     }
 
     @Test
-    fun `leite do campo resolved via head token after stopword removal`() {
+    fun `leite do campo resolved via token match after stopword removal`() {
         assertEquals(IconBucket.DAIRY, matcher.match("leite do campo"))
     }
 
     @Test
-    fun `maca verde resolved via head token`() {
+    fun `maca verde resolved via token match`() {
         assertEquals(IconBucket.FRUIT, matcher.match("maçã verde"))
+    }
+
+    @Test
+    fun `non-head token match — first token misses, later token hits`() {
+        // "embalagem leite" → "embalagem" not in dict, "leite" is → DAIRY
+        assertEquals(IconBucket.DAIRY, matcher.match("embalagem leite"))
     }
 
     // ── Mixed-language inputs ─────────────────────────────────────────────────
 
     @Test
-    fun `milk powder resolved via head token`() {
+    fun `milk powder resolved via token match`() {
         // "milk powder" → token "milk" → DAIRY
         assertEquals(IconBucket.DAIRY, matcher.match("milk powder"))
     }
 
     @Test
-    fun `apple juice resolved via head token`() {
+    fun `apple juice resolved via token match`() {
         assertEquals(IconBucket.FRUIT, matcher.match("apple juice"))
     }
 
@@ -294,8 +300,14 @@ class IconMatcherTest {
     fun `updating dictionary with accented keys normalizes them`() {
         val m = DefaultIconMatcher(emptyMap(), normalizer)
         m.updateDictionary(mapOf("maçã" to IconBucket.FRUIT))
-        // query without accent resolves correctly after normalization
         assertEquals(IconBucket.FRUIT, m.match("maca"))
+    }
+
+    @Test
+    fun `alias map keys are normalized at construction so accented aliases work`() {
+        // "maçãs" key → normalized to "macas"; query "maçãs" also normalizes to "macas"
+        val m = DefaultIconMatcher(emptyMap(), normalizer, mapOf("maçãs" to IconBucket.FRUIT))
+        assertEquals(IconBucket.FRUIT, m.match("maçãs"))
     }
 
     @Test
