@@ -85,4 +85,20 @@ class IconMatcherTest {
         assertEquals(IconBucket.PANTRY_CANNED, matcher.match("Arroz"))
         assertEquals(IconBucket.PANTRY_CANNED, matcher.match("  Feijao  "))
     }
+
+    @Test
+    fun `updating dictionary changes match results`() {
+        val emptyMatcher = DefaultIconMatcher(emptyMap(), normalizer)
+        assertEquals(IconBucket.GENERIC, emptyMatcher.match("leite"))
+
+        assertEquals(true, emptyMatcher.updateDictionary(mapOf("leite" to IconBucket.DAIRY)))
+        assertEquals(IconBucket.DAIRY, emptyMatcher.match("leite"))
+    }
+
+    @Test
+    fun `updating dictionary with same contents reports unchanged`() {
+        val matcher = DefaultIconMatcher(dictionary, normalizer)
+
+        assertEquals(false, matcher.updateDictionary(dictionary.toMap()))
+    }
 }

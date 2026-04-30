@@ -722,10 +722,15 @@ private fun PendingItemRow(
         label = "pendingRowContentColor"
     )
 
+    val iconVersion = iconResolver.version
+    val leadingIcon = remember(item.name, iconVersion) {
+        iconResolver.resolveIcon(item.name)
+    }
+
     ShoppingItemRow(
         name = item.name,
         visuals = ShoppingItemRowVisuals(
-            leadingIcon = iconResolver.resolveIcon(item.name),
+            leadingIcon = leadingIcon,
             containerColor = containerColor,
             contentColor = contentColor
         ),
@@ -751,10 +756,15 @@ private fun PurchasedItemRow(
     iconResolver: IconResolver,
     modifier: Modifier = Modifier
 ) {
+    val iconVersion = iconResolver.version
+    val leadingIcon = remember(item.name, iconVersion) {
+        iconResolver.resolveIcon(item.name)
+    }
+
     ShoppingItemRow(
         name = item.name,
         visuals = ShoppingItemRowVisuals(
-            leadingIcon = iconResolver.resolveIcon(item.name),
+            leadingIcon = leadingIcon,
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             contentColor = MaterialTheme.colorScheme.onSurface,
             textDecoration = TextDecoration.LineThrough,

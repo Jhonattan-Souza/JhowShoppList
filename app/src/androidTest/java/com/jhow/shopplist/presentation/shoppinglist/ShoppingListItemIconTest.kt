@@ -51,7 +51,7 @@ class ShoppingListItemIconTest {
         composeRule.waitForIdle()
 
         composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("1")).assertIsDisplayed()
-        composeRule.onAllNodesWithTag(ShoppingListTestTags.ITEM_ICON).assertCountEquals(1)
+        composeRule.onAllNodesWithTag(ShoppingListTestTags.ITEM_ICON, useUnmergedTree = true).assertCountEquals(1)
     }
 
     @Test
@@ -68,7 +68,7 @@ class ShoppingListItemIconTest {
         composeRule.waitForIdle()
 
         composeRule.onNodeWithTag(ShoppingListTestTags.purchasedItem("2")).assertIsDisplayed()
-        composeRule.onAllNodesWithTag(ShoppingListTestTags.ITEM_ICON).assertCountEquals(1)
+        composeRule.onAllNodesWithTag(ShoppingListTestTags.ITEM_ICON, useUnmergedTree = true).assertCountEquals(1)
     }
 
     @Test

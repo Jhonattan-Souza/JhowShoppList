@@ -36,4 +36,30 @@ class IconResolverTest {
         val icon2 = resolver.resolveIcon("leite")
         assertEquals(icon1, icon2)
     }
+
+    @Test
+    fun `clearing cache allows re resolution after dictionary update`() {
+        val emptyMatcher = DefaultIconMatcher(emptyMap(), DefaultTextNormalizer())
+        val dynamicResolver = IconResolver(emptyMatcher)
+
+        val genericIcon = dynamicResolver.resolveIcon("leite")
+        assertEquals(BucketIcons.forBucket(IconBucket.GENERIC), genericIcon)
+
+        emptyMatcher.updateDictionary(mapOf("leite" to IconBucket.DAIRY))
+        dynamicResolver.clearCache()
+
+        val dairyIcon = dynamicResolver.resolveIcon("leite")
+        assertEquals(BucketIcons.forBucket(IconBucket.DAIRY), dairyIcon)
+    }
+
+    @Test
+    fun `clearing cache increments resolver version`() {
+        val dynamicResolver = IconResolver(DefaultIconMatcher(emptyMap(), DefaultTextNormalizer()))
+
+        assertEquals(0, dynamicResolver.version)
+
+        dynamicResolver.clearCache()
+
+        assertEquals(1, dynamicResolver.version)
+    }
 }

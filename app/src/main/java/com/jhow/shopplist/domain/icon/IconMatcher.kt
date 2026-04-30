@@ -5,11 +5,23 @@ interface IconMatcher {
 }
 
 class DefaultIconMatcher(
-    private val dictionary: Map<String, IconBucket>,
+    dictionary: Map<String, IconBucket>,
     private val normalizer: TextNormalizer
 ) : IconMatcher {
+
+    @Volatile
+    private var dictionaryRef: Map<String, IconBucket> = dictionary
+
+    fun updateDictionary(newDictionary: Map<String, IconBucket>): Boolean {
+        if (dictionaryRef == newDictionary) {
+            return false
+        }
+        dictionaryRef = newDictionary
+        return true
+    }
+
     override fun match(itemName: String): IconBucket {
         val normalized = normalizer.normalize(itemName)
-        return dictionary[normalized] ?: IconBucket.GENERIC
+        return dictionaryRef[normalized] ?: IconBucket.GENERIC
     }
 }
