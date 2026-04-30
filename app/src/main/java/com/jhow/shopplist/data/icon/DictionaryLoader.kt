@@ -6,16 +6,21 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
+@OptIn(ExperimentalSerializationApi::class)
+private val dictionaryJson = Json {
+    ignoreUnknownKeys = true
+    allowComments = true
+}
+
 interface DictionaryLoader {
     suspend fun load(): Map<String, IconBucket>
 }
-
-private val dictionaryJson = Json { ignoreUnknownKeys = true }
 
 class AssetDictionaryLoader(
     private val openAsset: suspend (String) -> InputStream
