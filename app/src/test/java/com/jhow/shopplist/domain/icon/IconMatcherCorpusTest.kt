@@ -133,8 +133,8 @@ class IconMatcherCorpusTest {
     // ── Mixed-language items ──────────────────────────────────────────────────────
 
     @Test
-    fun `corpus - whey protein resolves to generic (not in dictionary)`() {
-        assertEquals(IconBucket.GENERIC, matcher.match("whey protein"))
+    fun `corpus - whey protein resolves to staples via token match`() {
+        assertEquals(IconBucket.STAPLES, matcher.match("whey protein"))
     }
 
     @Test
