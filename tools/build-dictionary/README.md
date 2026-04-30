@@ -14,7 +14,7 @@ This toolchain refreshes the icon dictionary assets from Open Food Facts and mer
 
 - `ingest_off.py` downloads the OFF `categories.txt` taxonomy, parses the hierarchy, applies `off_to_bucket.json`, and emits per-language base dictionaries into `.cache/`.
 - `off_to_bucket.json` maps canonical OFF category identifiers to the app's icon bucket identifiers.
-- `overlays/pt.json` and `overlays/en.json` contain hand-curated corrections and additions. Overlay entries always win over OFF on key conflicts.
+- `overlays/pt.overlay.json` and `overlays/en.overlay.json` contain hand-curated corrections and additions. Overlay entries always win over OFF on key conflicts.
 - `build.sh` runs the ingestion step, merges base + overlay deterministically, and writes the final runtime assets.
 
 ## Notes
