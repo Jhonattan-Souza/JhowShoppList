@@ -9,11 +9,14 @@ interface TextNormalizer {
 class DefaultTextNormalizer : TextNormalizer {
 
     private val quantityTokenRegex = Regex(
-        """^\d+(?:kg|g|mg|l|ml|un|unidades?|x)$""",
+        """^\d+(?:[.,]\d+)?(?:kg|g|mg|l|ml|un|unidades?|x)?$""",
         RegexOption.IGNORE_CASE
     )
 
-    private val standaloneUnitWords = setOf("pacote", "pacotes", "pack", "packs", "unidade", "unidades")
+    private val standaloneUnitWords = setOf(
+        "kg", "g", "mg", "l", "ml",
+        "pacote", "pacotes", "pack", "packs", "unidade", "unidades"
+    )
 
     private val stopwords = setOf("de", "do", "da", "dos", "das", "com", "the", "of", "and", "with")
 
