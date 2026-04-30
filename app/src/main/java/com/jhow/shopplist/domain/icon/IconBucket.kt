@@ -19,7 +19,7 @@ enum class IconBucket {
     SNACKS,
     SWEETS,
     CONDIMENTS,
-    MERCEARIA,
+    STAPLES,
     PANTRY,
     CLEANING,
     PERSONAL_CARE,
