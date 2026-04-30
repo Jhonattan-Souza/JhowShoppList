@@ -15,7 +15,7 @@ interface DictionaryLoader {
     suspend fun load(): Map<String, IconBucket>
 }
 
-private val dictionaryJson = Json
+private val dictionaryJson = Json { ignoreUnknownKeys = true }
 
 class AssetDictionaryLoader(
     private val openAsset: suspend (String) -> InputStream

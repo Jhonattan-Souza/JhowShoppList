@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.jhow.shopplist.domain.icon.IconMatcher
 
 class IconResolver(private val matcher: IconMatcher) {
+    /** Main-thread only. */
     private val cache = mutableMapOf<String, ImageVector>()
     private var cacheVersionState by mutableIntStateOf(0)
 

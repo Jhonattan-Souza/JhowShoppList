@@ -33,6 +33,8 @@ class ShoppingListItemIconTest {
                 } else {
                     IconBucket.GENERIC
                 }
+
+            override fun updateDictionary(newDictionary: Map<String, IconBucket>): Boolean = false
         }
     )
 
