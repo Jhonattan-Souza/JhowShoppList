@@ -1,6 +1,8 @@
 package com.jhow.shopplist.domain.icon
 
 import com.jhow.shopplist.data.icon.parseDictionaryJson
+import java.nio.file.Files
+import java.nio.file.Path
 import org.junit.Assert.assertEquals
 import org.junit.BeforeClass
 import org.junit.Test
@@ -14,12 +16,24 @@ class IconMatcherCorpusTest {
         @BeforeClass
         fun setUp() {
             val normalizer = DefaultTextNormalizer()
-            val ptJson = java.io.File("src/main/assets/icons/dictionary-pt.json").readText()
-            val enJson = java.io.File("src/main/assets/icons/dictionary-en.json").readText()
+            val ptJson = readAsset("dictionary-pt.json")
+            val enJson = readAsset("dictionary-en.json")
             val ptDict = parseDictionaryJson(ptJson)
             val enDict = parseDictionaryJson(enJson)
             val merged = ptDict + enDict
             matcher = DefaultIconMatcher(merged, normalizer)
+        }
+
+        private fun readAsset(fileName: String): String {
+            val candidates = listOf(
+                Path.of("app", "src", "main", "assets", "icons", fileName),
+                Path.of("src", "main", "assets", "icons", fileName)
+            )
+
+            val assetPath = candidates.firstOrNull { Files.exists(it) }
+                ?: error("Unable to find asset $fileName from ${candidates.joinToString()}")
+
+            return Files.readAllBytes(assetPath).toString(Charsets.UTF_8)
         }
     }
 

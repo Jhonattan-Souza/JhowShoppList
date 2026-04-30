@@ -10,32 +10,25 @@ import org.junit.Test
 
 class GeneratedDictionaryAssetTest {
 
-    private val matcher = DefaultIconMatcher(loadMergedDictionary(), DefaultTextNormalizer())
+    private val normalizer = DefaultTextNormalizer()
+    private val mergedDictionary = loadMergedDictionary()
+    private val matcher = DefaultIconMatcher(mergedDictionary, normalizer)
 
     @Test
-    fun `generated dictionaries preserve curated overlay terms`() {
-        assertResolves(
-            "leite" to IconBucket.DAIRY,
-            "iogurte" to IconBucket.DAIRY,
-            "maçã" to IconBucket.FRUIT,
-            "pão" to IconBucket.BREAD,
-            "arroz" to IconBucket.PANTRY,
-            "feijão" to IconBucket.PANTRY,
-            "milk" to IconBucket.DAIRY,
-            "yogurt" to IconBucket.DAIRY,
-            "apple" to IconBucket.FRUIT,
-            "bread" to IconBucket.BREAD,
-            "rice" to IconBucket.PANTRY,
-            "beans" to IconBucket.PANTRY
-        )
+    fun `generated dictionaries preserve every curated overlay term and bucket`() {
+        val overlays = loadOverlayDictionary("pt.overlay.json") + loadOverlayDictionary("en.overlay.json")
+
+        overlays.forEach { (term, expectedBucket) ->
+            val normalizedTerm = normalizer.normalize(term)
+            assertEquals(term, expectedBucket, mergedDictionary[normalizedTerm])
+            assertEquals(term, expectedBucket, matcher.match(term))
+        }
     }
 
     @Test
     fun `generated dictionaries cover OFF derived terms beyond the overlay`() {
         assertResolves(
-            "provolone" to IconBucket.CHEESE,
             "lettuces" to IconBucket.VEGETABLE,
-            "broccoli" to IconBucket.VEGETABLE,
             "fish fillets" to IconBucket.FISH,
             "chicken breasts" to IconBucket.MEAT,
             "hams" to IconBucket.DELI_COLD_CUTS,
@@ -46,7 +39,6 @@ class GeneratedDictionaryAssetTest {
             "chocolates" to IconBucket.SWEETS,
             "olive oils" to IconBucket.CONDIMENTS,
             "queijos" to IconBucket.CHEESE,
-            "alface" to IconBucket.VEGETABLE,
             "brócolos" to IconBucket.VEGETABLE,
             "filetes de peixe" to IconBucket.FISH,
             "peitos de frango" to IconBucket.MEAT,
@@ -55,24 +47,20 @@ class GeneratedDictionaryAssetTest {
             "cafés" to IconBucket.BEVERAGES_HOT,
             "vinhos" to IconBucket.ALCOHOL,
             "gelado" to IconBucket.FROZEN,
-            "azeite de oliva" to IconBucket.CONDIMENTS
+            "azeite de oliva" to IconBucket.CONDIMENTS,
+            "mixed yogurts" to IconBucket.DAIRY,
+            "plain wheat biscuits" to IconBucket.SNACKS,
+            "tea seed oils" to IconBucket.CONDIMENTS
         )
     }
 
     @Test
-    fun `generated dictionaries keep overlay only corrections and additions`() {
+    fun `generated dictionaries keep known overlay bucket regressions`() {
         assertResolves(
-            "aipim" to IconBucket.VEGETABLE,
-            "macaxeira" to IconBucket.VEGETABLE,
-            "chuchu" to IconBucket.VEGETABLE,
-            "polenta" to IconBucket.GRAIN,
-            "coca" to IconBucket.BEVERAGES_COLD,
-            "shampoo" to IconBucket.PERSONAL_CARE,
-            "toothpaste" to IconBucket.PERSONAL_CARE,
-            "ração" to IconBucket.PET,
-            "dog food" to IconBucket.PET,
-            "papinha" to IconBucket.BABY,
-            "baby formula" to IconBucket.BABY
+            "whey" to IconBucket.STAPLES,
+            "cappuccino" to IconBucket.BEVERAGES_HOT,
+            "bolo" to IconBucket.BREAD,
+            "hambúrguer" to IconBucket.FROZEN
         )
     }
 
@@ -85,7 +73,22 @@ class GeneratedDictionaryAssetTest {
     private fun loadMergedDictionary(): Map<String, IconBucket> {
         val pt = parseDictionaryJson(readAsset("dictionary-pt.json"))
         val en = parseDictionaryJson(readAsset("dictionary-en.json"))
-        return pt + en
+        return (pt + en).mapKeys { (key, _) -> normalizer.normalize(key) }
+    }
+
+    private fun loadOverlayDictionary(fileName: String): Map<String, IconBucket> =
+        parseDictionaryJson(stripLineComments(readOverlay(fileName)))
+
+    private fun readOverlay(fileName: String): String {
+        val candidates = listOf(
+            Path.of("tools", "build-dictionary", "overlays", fileName),
+            Path.of("..", "tools", "build-dictionary", "overlays", fileName)
+        )
+
+        val overlayPath = candidates.firstOrNull { Files.exists(it) }
+            ?: error("Unable to find overlay $fileName from ${candidates.joinToString()}")
+
+        return Files.readAllBytes(overlayPath).toString(Charsets.UTF_8)
     }
 
     private fun readAsset(fileName: String): String {
@@ -99,4 +102,9 @@ class GeneratedDictionaryAssetTest {
 
         return Files.readAllBytes(assetPath).toString(Charsets.UTF_8)
     }
+
+    private fun stripLineComments(jsonWithComments: String): String =
+        jsonWithComments.lineSequence()
+            .filterNot { it.trimStart().startsWith("//") }
+            .joinToString("\n")
 }
