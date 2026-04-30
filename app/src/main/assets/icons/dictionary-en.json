@@ -194,6 +194,7 @@
   "flour": "staples",
   "salt": "staples",
   "sugar": "staples",
+  "whey": "staples",
 
   // ── SWEETS ──
   "brownie": "sweets",
