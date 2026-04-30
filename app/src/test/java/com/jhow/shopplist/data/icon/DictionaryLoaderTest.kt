@@ -53,7 +53,7 @@ class DictionaryLoaderTest {
     }
 
     @Test
-    fun `unknown bucket values are skipped`() = runTest {
+    fun `unknown bucket values throw illegal argument exception`() = runTest {
         val ptJson = """{"leite":"dairy","unknown":"not-a-bucket"}"""
         val enJson = """{}"""
 

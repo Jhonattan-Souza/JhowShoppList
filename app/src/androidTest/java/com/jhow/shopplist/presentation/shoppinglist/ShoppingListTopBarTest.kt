@@ -27,6 +27,7 @@ class ShoppingListTopBarTest {
     private val fakeIconResolver = IconResolver(
         object : IconMatcher {
             override fun match(itemName: String): IconBucket = IconBucket.GENERIC
+            override fun updateDictionary(newDictionary: Map<String, IconBucket>): Boolean = false
         }
     )
 

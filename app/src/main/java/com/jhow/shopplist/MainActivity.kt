@@ -13,7 +13,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.jhow.shopplist.data.icon.DictionaryLoader
-import com.jhow.shopplist.domain.icon.DefaultIconMatcher
+import com.jhow.shopplist.domain.icon.IconMatcher
 import com.jhow.shopplist.navigation.Routes
 import com.jhow.shopplist.presentation.caldavconfig.CalDavConfigRoute
 import com.jhow.shopplist.presentation.icon.IconResolver
@@ -40,7 +40,7 @@ class MainActivity : ComponentActivity() {
     lateinit var dictionaryLoader: DictionaryLoader
 
     @Inject
-    lateinit var defaultIconMatcher: DefaultIconMatcher
+    lateinit var iconMatcher: IconMatcher
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -91,7 +91,7 @@ class MainActivity : ComponentActivity() {
                 Log.w(TAG, "Failed to load icon dictionary, using generic icons", error)
                 return@launch
             }
-            val dictionaryChanged = defaultIconMatcher.updateDictionary(dictionary)
+            val dictionaryChanged = iconMatcher.updateDictionary(dictionary)
             if (dictionaryChanged) {
                 iconResolver.clearCache()
             }
