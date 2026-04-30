@@ -6,30 +6,39 @@ interface IconMatcher {
 }
 
 /**
- * Stateful singleton that delegates matching to a mutable dictionary reference.
+ * Stateful singleton that resolves item names to icon buckets via a shallow cascade:
+ * exact → alias → token-per-token → generic.
  *
- * While the class holds mutable state, it is effectively a pure function for any
- * given dictionary version: the same inputs always produce the same outputs until
- * [updateDictionary] is called.
+ * Dictionary keys are normalized on ingestion so queries and keys use the same
+ * representation. The cascade never uses stemming, fuzzy matching, or ML.
  */
 class DefaultIconMatcher(
     dictionary: Map<String, IconBucket>,
-    private val normalizer: TextNormalizer
+    private val normalizer: TextNormalizer,
+    private val aliasMap: Map<String, IconBucket> = emptyMap()
 ) : IconMatcher {
 
     @Volatile
-    private var dictionaryRef: Map<String, IconBucket> = dictionary
+    private var dictionaryRef: Map<String, IconBucket> = dictionary.normalizeKeys()
 
     override fun updateDictionary(newDictionary: Map<String, IconBucket>): Boolean {
-        if (dictionaryRef == newDictionary) {
-            return false
-        }
-        dictionaryRef = newDictionary
+        val normalized = newDictionary.normalizeKeys()
+        if (dictionaryRef == normalized) return false
+        dictionaryRef = normalized
         return true
     }
 
     override fun match(itemName: String): IconBucket {
         val normalized = normalizer.normalize(itemName)
-        return dictionaryRef[normalized] ?: IconBucket.GENERIC
+        if (normalized.isEmpty()) return IconBucket.GENERIC
+
+        return dictionaryRef[normalized]
+            ?: aliasMap[normalized]
+            ?: normalized.split(" ").filter { it.isNotBlank() }
+                .firstNotNullOfOrNull { token -> dictionaryRef[token] ?: aliasMap[token] }
+            ?: IconBucket.GENERIC
     }
+
+    private fun Map<String, IconBucket>.normalizeKeys(): Map<String, IconBucket> =
+        entries.associate { (k, v) -> normalizer.normalize(k) to v }
 }
