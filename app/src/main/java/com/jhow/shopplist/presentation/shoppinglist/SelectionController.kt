@@ -34,4 +34,14 @@ class SelectionController @Inject constructor() {
         mutableSelected.value = emptySet()
         mutableIsActive.value = false
     }
+
+    internal fun retainOnly(validItemIds: Set<String>) {
+        if (!mutableIsActive.value) return
+
+        val retainedSelection = mutableSelected.value.intersect(validItemIds)
+        if (retainedSelection == mutableSelected.value) return
+
+        mutableSelected.value = retainedSelection
+        mutableIsActive.value = retainedSelection.isNotEmpty()
+    }
 }

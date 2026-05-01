@@ -240,6 +240,36 @@ class ShoppingListViewModelTest {
     }
 
     @Test
+    fun `clicking pending item after stale selection disappears marks it purchased`() = runTest {
+        repository.seedItems(
+            listOf(
+                samplePendingItem(id = "eggs"),
+                samplePendingItem(id = "rice")
+            )
+        )
+        advanceUntilIdle()
+
+        viewModel.onPendingItemLongPressed("eggs")
+        advanceUntilIdle()
+        repository.seedItems(
+            listOf(
+                samplePurchasedItem(id = "eggs"),
+                samplePendingItem(id = "rice")
+            )
+        )
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+        assertEquals(emptySet<String>(), viewModel.uiState.value.selectedIds)
+
+        viewModel.onPendingItemClicked("rice")
+        advanceUntilIdle()
+
+        assertEquals(listOf(setOf("rice")), repository.purchasedRequests)
+        assertEquals(1, syncScheduler.requestCount)
+    }
+
+    @Test
     fun `long pressing pending item enters multi select with item selected`() = runTest {
         repository.seedItems(listOf(samplePendingItem(id = "rice")))
         advanceUntilIdle()

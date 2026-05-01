@@ -126,14 +126,19 @@ class ShoppingListViewModel @Inject constructor(
             val pendingIds = intermediate.pendingItems.mapTo(linkedSetOf()) { it.id }
             val distinctPurchasedItems = intermediate.purchasedItems.filterNot { it.id in pendingIds }
             val visibleItems = intermediate.pendingItems + distinctPurchasedItems
+            val visibleSelectedIds = intermediate.selectedIds.intersect(pendingIds)
+
+            if (visibleSelectedIds != intermediate.selectedIds) {
+                selectionController.retainOnly(pendingIds)
+            }
 
             ShoppingListUiState(
                 inputValue = intermediate.currentInput,
                 suggestions = intermediate.currentSuggestions,
                 pendingItems = intermediate.pendingItems,
                 purchasedItems = distinctPurchasedItems,
-                selectedIds = intermediate.selectedIds.intersect(pendingIds),
-                isSelectionMode = intermediate.isSelectionMode && intermediate.selectedIds.any { it in pendingIds },
+                selectedIds = visibleSelectedIds,
+                isSelectionMode = intermediate.isSelectionMode && visibleSelectedIds.isNotEmpty(),
                 itemPendingDeletion = visibleItems.firstOrNull { it.id == intermediate.itemPendingDeletion?.id },
                 isManualSync = syncing && latch,
                 isBackgroundSync = syncing && !latch,
