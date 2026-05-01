@@ -63,8 +63,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -654,6 +656,13 @@ private fun ShoppingItemsContent(
     val swipeResetTrigger = uiState.deleteUndoSnackbar?.count?.toString().orEmpty()
     val emptyPendingTitle = stringResource(R.string.empty_pending_title)
     val emptyPurchasedTitle = stringResource(R.string.empty_purchased_title)
+    var userPurchasedSectionExpanded by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    val purchasedSectionVisibility = PurchasedSectionState.resolve(
+        pendingCount = uiState.pendingItems.size,
+        purchasedCount = uiState.purchasedItems.size,
+        userExpanded = userPurchasedSectionExpanded
+    )
+    val isPurchasedSectionExpanded = purchasedSectionVisibility == PurchasedSectionVisibility.Expanded
 
     LazyColumn(
         modifier = modifier
@@ -664,7 +673,10 @@ private fun ShoppingItemsContent(
     ) {
         item(key = ShoppingListTestTags.PENDING_SECTION) {
             SectionHeader(
-                title = stringResource(R.string.pending_items_title),
+                title = sectionTitle(
+                    title = stringResource(R.string.pending_items_title),
+                    count = uiState.pendingItems.size
+                ),
                 modifier = Modifier.testTag(ShoppingListTestTags.PENDING_SECTION)
             )
         }
@@ -684,20 +696,31 @@ private fun ShoppingItemsContent(
 
         item(key = ShoppingListTestTags.PURCHASED_SECTION) {
             SectionHeader(
-                title = stringResource(R.string.purchased_items_title),
-                modifier = Modifier.testTag(ShoppingListTestTags.PURCHASED_SECTION)
+                title = sectionTitle(
+                    title = stringResource(R.string.purchased_items_title),
+                    count = uiState.purchasedItems.size
+                ),
+                modifier = Modifier
+                    .testTag(ShoppingListTestTags.PURCHASED_SECTION)
+                    .clickable {
+                        userPurchasedSectionExpanded = !isPurchasedSectionExpanded
+                    }
             )
         }
 
-        purchasedItemsSection(
-            purchasedItems = uiState.purchasedItems,
-            swipeResetTrigger = swipeResetTrigger,
-            itemCallbacks = itemCallbacks,
-            emptyPurchasedTitle = emptyPurchasedTitle,
-            iconResolver = iconResolver
-        )
+        if (isPurchasedSectionExpanded) {
+            purchasedItemsSection(
+                purchasedItems = uiState.purchasedItems,
+                swipeResetTrigger = swipeResetTrigger,
+                itemCallbacks = itemCallbacks,
+                emptyPurchasedTitle = emptyPurchasedTitle,
+                iconResolver = iconResolver
+            )
+        }
     }
 }
+
+private fun sectionTitle(title: String, count: Int): String = "$title \u00b7 $count"
 
 private fun androidx.compose.foundation.lazy.LazyListScope.pendingItemsSection(
     pendingItems: List<ShoppingItem>,
