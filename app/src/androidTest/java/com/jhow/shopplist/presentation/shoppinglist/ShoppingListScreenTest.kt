@@ -66,6 +66,8 @@ class ShoppingListScreenTest {
         composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-apples")).performClick()
         composeRule.waitForIdle()
 
+        expandPurchasedSection()
+
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.purchasedItem("pending-apples")).fetchSemanticsNodes().isNotEmpty()
         }
@@ -80,6 +82,8 @@ class ShoppingListScreenTest {
 
     @Test
     fun clickingPurchasedItemRestoresItToPendingSection() {
+        expandPurchasedSection()
+
         composeRule.onNodeWithTag(ShoppingListTestTags.purchasedItem("purchased-coffee")).performClick()
         composeRule.waitForIdle()
 
@@ -95,6 +99,8 @@ class ShoppingListScreenTest {
     @Test
     fun shoppingRowsUseCompactSingleLineHeight() {
         composeRule.waitForIdle()
+        expandPurchasedSection()
+
         val maxCompactRowHeight = with(composeRule.density) { 64.dp.toPx() }
         val heightTolerance = with(composeRule.density) { 1.dp.toPx() }
 
@@ -154,10 +160,67 @@ class ShoppingListScreenTest {
         composeRule.onNodeWithTag(ShoppingListTestTags.PURCHASE_SELECTED_BUTTON).performClick()
         composeRule.waitForIdle()
 
+        expandPurchasedSection()
+
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.purchasedItem("pending-apples")).fetchSemanticsNodes().isNotEmpty() &&
                 composeRule.onAllNodesWithTag(ShoppingListTestTags.purchasedItem("pending-bread")).fetchSemanticsNodes().isNotEmpty()
         }
+    }
+
+    @Test
+    fun purchasedSectionIsCollapsedByDefaultWhenPendingItemsRemain() {
+        composeRule.waitForIdle()
+
+        assertTrue(composeRule.onAllNodesWithText("Pending items \u00b7 8").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(composeRule.onAllNodesWithText("Purchased history \u00b7 2").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.purchasedItem("purchased-coffee")).fetchSemanticsNodes().isEmpty()
+        )
+    }
+
+    @Test
+    fun tappingPurchasedSectionHeaderExpandsCollapsedRows() {
+        expandPurchasedSection()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.purchasedItem("purchased-coffee")).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        assertTrue(
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.purchasedItem("purchased-coffee")).fetchSemanticsNodes().isNotEmpty()
+        )
+    }
+
+    @Test
+    fun purchasedSectionExpandsByDefaultWhenNothingIsPending() {
+        runBlocking {
+            database?.shoppingItemDao()?.replaceAll(
+                listOf(
+                    ShoppingItemEntity(
+                        id = "purchased-only",
+                        name = "Coffee",
+                        isPurchased = true,
+                        purchaseCount = 1,
+                        createdAt = 1L,
+                        updatedAt = 1L,
+                        isDeleted = false,
+                        syncStatus = SyncStatus.SYNCED
+                    )
+                )
+            )
+        }
+        composeRule.waitForIdle()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithText("Pending items \u00b7 0").fetchSemanticsNodes().isNotEmpty() &&
+                composeRule.onAllNodesWithText("Purchased history \u00b7 1").fetchSemanticsNodes().isNotEmpty() &&
+                composeRule.onAllNodesWithTag(ShoppingListTestTags.purchasedItem("purchased-only")).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        assertTrue(
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.purchasedItem("purchased-only")).fetchSemanticsNodes().isNotEmpty()
+        )
     }
 
     @Test
@@ -395,6 +458,8 @@ class ShoppingListScreenTest {
 
     @Test
     fun swipingPurchasedItemRemovesItAndShowsUndoSnackbar() {
+        expandPurchasedSection()
+
         composeRule.onNodeWithTag(ShoppingListTestTags.swipePurchasedItem("purchased-coffee")).performTouchInput {
             swipeLeft()
         }
@@ -464,6 +529,11 @@ class ShoppingListScreenTest {
         }
 
         assertTrue(composeRule.onAllNodesWithText("Undo").fetchSemanticsNodes().isNotEmpty())
+    }
+
+    private fun expandPurchasedSection() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.PURCHASED_SECTION).performClick()
+        composeRule.waitForIdle()
     }
 
 
