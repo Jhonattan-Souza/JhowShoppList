@@ -179,7 +179,7 @@ private fun CalDavConfigFormContent(
             Text(
                 text = uiState.statusMessage,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error,
+                color = MaterialTheme.colorScheme.onErrorContainer,
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag(CalDavConfigTestTags.STATUS_TEXT)
