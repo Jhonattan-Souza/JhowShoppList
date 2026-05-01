@@ -1,6 +1,7 @@
 package com.jhow.shopplist.presentation.caldavconfig
 
-import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
@@ -24,7 +25,7 @@ import org.junit.runner.RunWith
 class CalDavConfigScreenTest {
 
     @get:Rule
-    val composeRule = createComposeRule()
+    val composeRule = createAndroidComposeRule<ComponentActivity>()
 
     @Test
     fun initialState_displaysFormFields() {
@@ -100,6 +101,27 @@ class CalDavConfigScreenTest {
 
         composeRule.onNodeWithTag(CalDavConfigTestTags.SAVE_BUTTON).performClick()
         assertTrue(saveClicked)
+    }
+
+    @Test
+    fun systemBack_invokesNavigateBackCallback() {
+        var navigateBackClicked = false
+
+        composeRule.setContent {
+            CalDavConfigScreen(
+                uiState = CalDavConfigUiState(isLoading = false),
+                callbacks = CalDavConfigCallbacks(
+                    onNavigateBack = { navigateBackClicked = true }
+                )
+            )
+        }
+
+        composeRule.activityRule.scenario.onActivity { activity ->
+            activity.onBackPressedDispatcher.onBackPressed()
+        }
+        composeRule.waitForIdle()
+
+        assertTrue(navigateBackClicked)
     }
 
     @Test

@@ -1,5 +1,7 @@
 package com.jhow.shopplist.presentation.caldavconfig
 
+import androidx.activity.BackEventCompat
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -56,6 +58,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jhow.shopplist.R
 import com.jhow.shopplist.domain.model.CalDavPendingAction
+import kotlinx.coroutines.flow.Flow
 
 @Composable
 fun CalDavConfigRoute(
@@ -99,6 +102,11 @@ fun CalDavConfigScreen(
     modifier: Modifier = Modifier,
     callbacks: CalDavConfigCallbacks = CalDavConfigCallbacks()
 ) {
+    PredictiveBackHandler { progress: Flow<BackEventCompat> ->
+        progress.collect {}
+        callbacks.onNavigateBack()
+    }
+
     Scaffold(
         modifier = modifier
             .fillMaxSize()
