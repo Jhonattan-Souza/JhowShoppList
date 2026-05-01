@@ -14,6 +14,7 @@ object ShoppingListTestTags {
     const val SYNC_BADGE = "sync_badge"
     const val SYNC_BADGE_SPINNER = "sync_badge_spinner"
     const val MANUAL_SYNC_LOADER = "manual_sync_loader"
+    const val MANUAL_SYNC_PROGRESS_INDICATOR = "manual_sync_progress_indicator"
     const val SYNC_SETTINGS_BUTTON = "sync_settings_button"
     const val SYNC_SETTINGS_SHEET = "sync_settings_sheet"
     const val SYNC_SERVER_FIELD = "sync_server_field"

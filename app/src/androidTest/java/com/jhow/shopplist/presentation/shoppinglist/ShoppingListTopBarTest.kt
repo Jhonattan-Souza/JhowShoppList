@@ -13,7 +13,10 @@ import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.jhow.shopplist.domain.icon.IconBucket
 import com.jhow.shopplist.domain.icon.IconMatcher
+import com.jhow.shopplist.domain.model.ShoppingItem
+import com.jhow.shopplist.domain.model.SyncStatus
 import com.jhow.shopplist.presentation.icon.IconResolver
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -133,18 +136,33 @@ class ShoppingListTopBarTest {
     }
 
     @Test
-    fun syncBadgeSpinner_visible_whenManualSyncTrue() {
+    fun manualSync_showsTopLinearProgress_withoutBlockingListInteraction() {
+        var clickedItemId: String? = null
+
         composeRule.setContent {
             ShoppingListScreen(
-                uiState = ShoppingListUiState(isSyncConfigured = true, isManualSync = true),
+                uiState = ShoppingListUiState(
+                    isSyncConfigured = true,
+                    isManualSync = true,
+                    pendingItems = listOf(sampleItem(id = "milk", name = "Milk"))
+                ),
                 snackbarHostState = SnackbarHostState(),
+                itemCallbacks = ShoppingListItemCallbacks(
+                    onPendingItemClick = { clickedItemId = it }
+                ),
                 iconResolver = fakeIconResolver
             )
         }
         composeRule.waitForIdle()
 
         composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_BADGE_SPINNER).assertIsDisplayed()
-        composeRule.onNodeWithTag(ShoppingListTestTags.MANUAL_SYNC_LOADER).assertIsDisplayed()
+        composeRule.onNodeWithTag(ShoppingListTestTags.MANUAL_SYNC_PROGRESS_INDICATOR).assertIsDisplayed()
+        composeRule.onAllNodesWithTag(ShoppingListTestTags.MANUAL_SYNC_LOADER).assertCountEquals(0)
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("milk")).performClick()
+        composeRule.waitForIdle()
+
+        assertEquals("milk", clickedItemId)
     }
 
     @Test
@@ -160,7 +178,7 @@ class ShoppingListTopBarTest {
 
         composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_BADGE_SPINNER).assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Sync now").assertIsDisplayed()
-        composeRule.onAllNodesWithTag(ShoppingListTestTags.MANUAL_SYNC_LOADER).assertCountEquals(0)
+        composeRule.onAllNodesWithTag(ShoppingListTestTags.MANUAL_SYNC_PROGRESS_INDICATOR).assertCountEquals(0)
     }
 
     @Test
@@ -183,4 +201,15 @@ class ShoppingListTopBarTest {
         composeRule.onNodeWithText("2").assertIsDisplayed()
         composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_SETTINGS_BUTTON).assertCountEquals(0)
     }
+
+    private fun sampleItem(id: String, name: String): ShoppingItem = ShoppingItem(
+        id = id,
+        name = name,
+        isPurchased = false,
+        purchaseCount = 0,
+        createdAt = 0L,
+        updatedAt = 0L,
+        isDeleted = false,
+        syncStatus = SyncStatus.SYNCED
+    )
 }
