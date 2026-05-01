@@ -18,6 +18,7 @@ class FakeShoppingListRepository : ShoppingListRepository {
     val purchasedRequests = mutableListOf<Set<String>>()
     val pendingRequests = mutableListOf<String>()
     val deletedRequests = mutableListOf<String>()
+    val restoredRequests = mutableListOf<String>()
     val remoteDeletedRequests = mutableListOf<String>()
     val syncedResults = mutableListOf<List<ShoppingItemSyncResult>>()
     val importedItems = mutableListOf<RemoteShoppingItemSnapshot>()
@@ -113,6 +114,11 @@ class FakeShoppingListRepository : ShoppingListRepository {
                 item
             }
         }
+    }
+
+    override suspend fun restoreDeletedItem(item: ShoppingItem) {
+        restoredRequests += item.id
+        items.value = items.value.filterNot { it.id == item.id } + item
     }
 
     override suspend fun getPendingSyncItems(): List<ShoppingItem> =

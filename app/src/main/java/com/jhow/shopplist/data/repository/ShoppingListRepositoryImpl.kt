@@ -79,6 +79,12 @@ class ShoppingListRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun restoreDeletedItem(item: ShoppingItem) {
+        withContext(ioDispatcher) {
+            shoppingItemDao.insertItem(item.toEntity())
+        }
+    }
+
     override suspend fun getPendingSyncItems(): List<ShoppingItem> = withContext(ioDispatcher) {
         shoppingItemDao.getPendingSyncItems().map { it.toDomain() }
     }
@@ -154,4 +160,20 @@ class ShoppingListRepositoryImpl @Inject constructor(
 
     private fun ShoppingItemEntity.updatedPurchaseCount(isCompletedRemotely: Boolean): Int =
         if (isCompletedRemotely && !isPurchased) purchaseCount + 1 else purchaseCount
+
+    private fun ShoppingItem.toEntity(): ShoppingItemEntity = ShoppingItemEntity(
+        id = id,
+        name = name,
+        isPurchased = isPurchased,
+        purchaseCount = purchaseCount,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+        isDeleted = isDeleted,
+        syncStatus = syncStatus,
+        remoteUid = remoteMetadata.remoteUid,
+        remoteHref = remoteMetadata.remoteHref,
+        remoteEtag = remoteMetadata.remoteEtag,
+        remoteLastModifiedAt = remoteMetadata.remoteLastModifiedAt,
+        lastSyncedAt = remoteMetadata.lastSyncedAt
+    )
 }

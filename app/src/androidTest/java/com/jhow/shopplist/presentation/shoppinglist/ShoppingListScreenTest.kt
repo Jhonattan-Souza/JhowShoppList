@@ -373,44 +373,36 @@ class ShoppingListScreenTest {
     }
 
     @Test
-    fun swipingPendingItemAndConfirmingRemovesItFromVisibleLists() {
+    fun swipingPendingItemRemovesItAndShowsUndoSnackbar() {
         composeRule.onNodeWithTag(ShoppingListTestTags.swipePendingItem("pending-apples")).performTouchInput {
             swipeLeft()
         }
         composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.onAllNodesWithTag(ShoppingListTestTags.DELETE_ITEM_DIALOG).fetchSemanticsNodes().isNotEmpty()
+            composeRule.onAllNodesWithText("Item deleted").fetchSemanticsNodes().isNotEmpty() &&
+                composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("pending-apples")).fetchSemanticsNodes().isEmpty()
         }
 
-        composeRule.onNodeWithText("Delete").performClick()
-        composeRule.waitForIdle()
-
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("pending-apples")).fetchSemanticsNodes().isEmpty()
-        }
-
+        assertTrue(composeRule.onAllNodesWithText("Undo").fetchSemanticsNodes().isNotEmpty())
         assertTrue(
             composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("pending-apples")).fetchSemanticsNodes().isEmpty()
+        )
+        assertTrue(
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.DELETE_ITEM_DIALOG).fetchSemanticsNodes().isEmpty()
         )
     }
 
     @Test
-    fun swipingPurchasedItemAndConfirmingRemovesItFromHistory() {
+    fun swipingPurchasedItemRemovesItAndShowsUndoSnackbar() {
         composeRule.onNodeWithTag(ShoppingListTestTags.swipePurchasedItem("purchased-coffee")).performTouchInput {
             swipeLeft()
         }
         composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.onAllNodesWithTag(ShoppingListTestTags.DELETE_ITEM_DIALOG).fetchSemanticsNodes().isNotEmpty()
-        }
-
-        composeRule.onNodeWithText("Delete").performClick()
-        composeRule.waitForIdle()
-
-        composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.onAllNodesWithTag(ShoppingListTestTags.purchasedItem("purchased-coffee")).fetchSemanticsNodes().isEmpty()
+            composeRule.onAllNodesWithText("Item deleted").fetchSemanticsNodes().isNotEmpty() &&
+                composeRule.onAllNodesWithTag(ShoppingListTestTags.purchasedItem("purchased-coffee")).fetchSemanticsNodes().isEmpty()
         }
 
         assertTrue(
@@ -419,7 +411,7 @@ class ShoppingListScreenTest {
     }
 
     @Test
-    fun swipingPendingItemAndCancellingKeepsItVisible() {
+    fun swipingPendingItemAndTappingUndoRestoresIt() {
         val initialLeft = composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-bread"))
             .fetchSemanticsNode().boundsInRoot.left
 
@@ -429,14 +421,14 @@ class ShoppingListScreenTest {
         composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.onAllNodesWithTag(ShoppingListTestTags.DELETE_ITEM_DIALOG).fetchSemanticsNodes().isNotEmpty()
+            composeRule.onAllNodesWithText("Item deleted").fetchSemanticsNodes().isNotEmpty()
         }
 
-        composeRule.onNodeWithText("Cancel").performClick()
+        composeRule.onNodeWithText("Undo").performClick()
         composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.onAllNodesWithTag(ShoppingListTestTags.DELETE_ITEM_DIALOG).fetchSemanticsNodes().isEmpty()
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("pending-bread")).fetchSemanticsNodes().isNotEmpty()
         }
 
         composeRule.waitForIdle()
@@ -449,6 +441,29 @@ class ShoppingListScreenTest {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("pending-bread")).fetchSemanticsNodes().isNotEmpty()
         )
         assertTrue(abs(restoredLeft - initialLeft) <= tolerance)
+    }
+
+    @Test
+    fun deletingMultipleItemsCoalescesUndoSnackbar() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.swipePendingItem("pending-apples")).performTouchInput {
+            swipeLeft()
+        }
+        composeRule.waitForIdle()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithText("Item deleted").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.swipePendingItem("pending-bread")).performTouchInput {
+            swipeLeft()
+        }
+        composeRule.waitForIdle()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithText("2 items deleted").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        assertTrue(composeRule.onAllNodesWithText("Undo").fetchSemanticsNodes().isNotEmpty())
     }
 
 

@@ -25,6 +25,8 @@ interface ShoppingListRepository {
 
     suspend fun softDeleteItem(id: String)
 
+    suspend fun restoreDeletedItem(item: ShoppingItem)
+
     suspend fun getPendingSyncItems(): List<ShoppingItem>
 
     suspend fun getAllItems(): List<ShoppingItem>
