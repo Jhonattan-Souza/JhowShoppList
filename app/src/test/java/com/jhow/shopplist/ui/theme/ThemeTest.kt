@@ -18,4 +18,12 @@ class ThemeTest {
         assertEquals(MossGreen, scheme.secondaryContainer)
         assertEquals(Cream, scheme.onSecondaryContainer)
     }
+
+    @Test
+    fun `light swipe delete inactive colors keep label visible`() {
+        val scheme = lightAppColorScheme()
+
+        assertEquals(Fog, scheme.surfaceContainerHighest)
+        assertEquals(Slate, scheme.onSurfaceVariant)
+    }
 }
