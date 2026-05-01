@@ -10,6 +10,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -55,13 +56,12 @@ class ShoppingListScreenTest {
     }
 
     @Test
-    fun selectingPendingItemShowsFabAndMovesItemToPurchased() {
+    fun tappingPendingItemMovesItToPurchasedImmediately() {
         assertTrue(
             composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("pending-apples")).fetchSemanticsNodes().isNotEmpty()
         )
 
         composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-apples")).performClick()
-        composeRule.onNodeWithTag(ShoppingListTestTags.PURCHASE_SELECTED_FAB).performClick()
         composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
@@ -72,7 +72,7 @@ class ShoppingListScreenTest {
             composeRule.onAllNodesWithTag(ShoppingListTestTags.purchasedItem("pending-apples")).fetchSemanticsNodes().isNotEmpty()
         )
         assertFalse(
-            composeRule.onAllNodesWithTag(ShoppingListTestTags.PURCHASE_SELECTED_FAB).fetchSemanticsNodes().isNotEmpty()
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.PURCHASE_SELECTED_BUTTON).fetchSemanticsNodes().isNotEmpty()
         )
     }
 
@@ -106,20 +106,74 @@ class ShoppingListScreenTest {
     }
 
     @Test
-    fun bulkActionFabFloatsAboveExpandedInputComposer() {
-        composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-apples")).performClick()
-        composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("co")
+    fun longPressingPendingItemEntersSelectionModeWithContextualActions() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-apples")).performTouchInput {
+            longClick()
+        }
         composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
-            composeRule.onAllNodesWithTag(ShoppingListTestTags.PURCHASE_SELECTED_FAB).fetchSemanticsNodes().isNotEmpty() &&
-                composeRule.onAllNodesWithTag(ShoppingListTestTags.SUGGESTION_LIST).fetchSemanticsNodes().isNotEmpty()
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.PURCHASE_SELECTED_BUTTON).fetchSemanticsNodes().isNotEmpty() &&
+                composeRule.onAllNodesWithTag(ShoppingListTestTags.DELETE_SELECTED_BUTTON).fetchSemanticsNodes().isNotEmpty()
         }
 
-        val fabBottom = composeRule.onNodeWithTag(ShoppingListTestTags.PURCHASE_SELECTED_FAB).fetchSemanticsNode().boundsInRoot.bottom
-        val suggestionTop = composeRule.onNodeWithTag(ShoppingListTestTags.SUGGESTION_LIST).fetchSemanticsNode().boundsInRoot.top
+        assertTrue(
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.EXIT_SELECTION_BUTTON).fetchSemanticsNodes().isNotEmpty()
+        )
+    }
 
-        assertTrue(fabBottom <= suggestionTop)
+    @Test
+    fun tappingPendingItemWhileSelectionModeActiveTogglesSelectionInsteadOfPurchasing() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-apples")).performTouchInput {
+            longClick()
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-bread")).performClick()
+        composeRule.waitForIdle()
+
+        assertTrue(
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("pending-bread")).fetchSemanticsNodes().isNotEmpty()
+        )
+        assertTrue(
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.purchasedItem("pending-bread")).fetchSemanticsNodes().isEmpty()
+        )
+    }
+
+    @Test
+    fun purchaseSelectedActionMarksAllSelectedItemsPurchased() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-apples")).performTouchInput {
+            longClick()
+        }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-bread")).performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.PURCHASE_SELECTED_BUTTON).performClick()
+        composeRule.waitForIdle()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.purchasedItem("pending-apples")).fetchSemanticsNodes().isNotEmpty() &&
+                composeRule.onAllNodesWithTag(ShoppingListTestTags.purchasedItem("pending-bread")).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    @Test
+    fun deleteSelectedActionRemovesAllSelectedItems() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-apples")).performTouchInput {
+            longClick()
+        }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-bread")).performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.DELETE_SELECTED_BUTTON).performClick()
+        composeRule.waitForIdle()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("pending-apples")).fetchSemanticsNodes().isEmpty() &&
+                composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("pending-bread")).fetchSemanticsNodes().isEmpty()
+        }
     }
 
     @Test

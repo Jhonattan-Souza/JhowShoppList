@@ -2,12 +2,11 @@ package com.jhow.shopplist.presentation.shoppinglist
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,7 +25,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.foundation.text.KeyboardActions
@@ -34,13 +32,14 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AddTask
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.ShoppingBag
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -96,8 +95,11 @@ class ShoppingListInputCallbacks(
 
 class ShoppingListItemCallbacks(
     val onPendingItemClick: (String) -> Unit = {},
+    val onPendingItemLongPress: (String) -> Unit = {},
     val onPurchasedItemClick: (String) -> Unit = {},
     val onPurchaseSelectedItems: () -> Unit = {},
+    val onDeleteSelectedItems: () -> Unit = {},
+    val onSelectionModeExited: () -> Unit = {},
     val onDeleteItemRequested: (ShoppingItem) -> Unit = {},
     val onDeleteItemDismissed: () -> Unit = {},
     val onDeleteItemConfirmed: () -> Unit = {}
@@ -116,8 +118,15 @@ private data class ShoppingItemRowVisuals(
     val rowAlpha: Float = 1f
 )
 
+private data class PendingItemRowCallbacks(
+    val onClick: () -> Unit,
+    val onLongClick: () -> Unit,
+    val onDeleteRequested: () -> Unit
+)
+
 private data class ShoppingItemRowInteractions(
     val onClick: () -> Unit,
+    val onLongClick: () -> Unit = {},
     val onDeleteRequested: () -> Unit,
     val swipeTag: String,
     val swipeResetTrigger: String
@@ -125,8 +134,7 @@ private data class ShoppingItemRowInteractions(
 
 private data class ShoppingListContentLayout(
     val innerPadding: PaddingValues,
-    val inputBarHeight: Dp,
-    val bulkFabBottomClearance: Dp
+    val inputBarHeight: Dp
 )
 
 internal val shoppingListWideSurfaceShape: Shape = RoundedCornerShape(percent = 50)
@@ -187,8 +195,11 @@ fun ShoppingListRoute(
     val itemCallbacks = remember(viewModel) {
         ShoppingListItemCallbacks(
             onPendingItemClick = viewModel::onPendingItemClicked,
+            onPendingItemLongPress = viewModel::onPendingItemLongPressed,
             onPurchasedItemClick = viewModel::onPurchasedItemClicked,
             onPurchaseSelectedItems = viewModel::onPurchaseSelectedItems,
+            onDeleteSelectedItems = viewModel::onDeleteSelectedItems,
+            onSelectionModeExited = viewModel::onSelectionModeExited,
             onDeleteItemRequested = viewModel::onDeleteItemRequested,
             onDeleteItemDismissed = viewModel::onDeleteItemDismissed,
             onDeleteItemConfirmed = viewModel::onDeleteItemConfirmed
@@ -224,9 +235,6 @@ fun ShoppingListScreen(
     val focusManager = LocalFocusManager.current
     var inputBarContentHeightPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
-    val bulkFabBottomClearance = with(density) {
-        if (inputBarContentHeightPx > 0) inputBarContentHeightPx.toDp() + 16.dp else 88.dp
-    }
 
     LaunchedEffect(Unit) {
         focusManager.clearFocus(force = true)
@@ -240,6 +248,7 @@ fun ShoppingListScreen(
         topBar = {
             ShoppingListTopAppBar(
                 uiState = uiState,
+                itemCallbacks = itemCallbacks,
                 syncCallbacks = syncCallbacks
             )
         },
@@ -251,8 +260,7 @@ fun ShoppingListScreen(
                 innerPadding = innerPadding,
                 inputBarHeight = with(density) {
                     if (inputBarContentHeightPx > 0) inputBarContentHeightPx.toDp() else 0.dp
-                },
-                bulkFabBottomClearance = bulkFabBottomClearance
+                }
             ),
             inputCallbacks = inputCallbacks,
             itemCallbacks = itemCallbacks,
@@ -301,13 +309,6 @@ private fun ShoppingListScreenContent(
             onContentHeightChanged = onInputBarHeightChanged,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
-
-        BulkPurchaseFab(
-            visible = uiState.isBulkActionVisible,
-            onClick = itemCallbacks.onPurchaseSelectedItems,
-            bottomClearance = layout.bulkFabBottomClearance,
-            modifier = Modifier.align(Alignment.BottomEnd)
-        )
     }
 
     DeleteItemDialog(
@@ -321,57 +322,148 @@ private fun ShoppingListScreenContent(
 @Composable
 private fun ShoppingListTopAppBar(
     uiState: ShoppingListUiState,
+    itemCallbacks: ShoppingListItemCallbacks,
+    syncCallbacks: ShoppingListSyncCallbacks
+) {
+    TopAppBar(
+        title = {
+            if (uiState.isSelectionMode) {
+                Text(text = uiState.selectedIds.size.toString())
+            }
+        },
+        navigationIcon = {
+            ShoppingListNavigationIcon(
+                isSelectionMode = uiState.isSelectionMode,
+                onSelectionModeExited = itemCallbacks.onSelectionModeExited
+            )
+        },
+        actions = {
+            ShoppingListTopBarActions(
+                uiState = uiState,
+                itemCallbacks = itemCallbacks,
+                syncCallbacks = syncCallbacks
+            )
+        }
+    )
+}
+
+@Composable
+private fun ShoppingListNavigationIcon(
+    isSelectionMode: Boolean,
+    onSelectionModeExited: () -> Unit
+) {
+    if (isSelectionMode) {
+        val exitSelectionModeLabel = stringResource(R.string.exit_selection_mode)
+
+        IconButton(
+            onClick = onSelectionModeExited,
+            modifier = Modifier
+                .testTag(ShoppingListTestTags.EXIT_SELECTION_BUTTON)
+                .semantics { contentDescription = exitSelectionModeLabel }
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Close,
+                contentDescription = null
+            )
+        }
+        return
+    }
+
+    Icon(
+        imageVector = Icons.Rounded.ShoppingBag,
+        contentDescription = stringResource(R.string.shopping_list_title),
+        tint = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .padding(start = 16.dp)
+            .size(28.dp)
+            .testTag(ShoppingListTestTags.BRAND_ICON)
+    )
+}
+
+@Composable
+private fun ShoppingListTopBarActions(
+    uiState: ShoppingListUiState,
+    itemCallbacks: ShoppingListItemCallbacks,
+    syncCallbacks: ShoppingListSyncCallbacks
+) {
+    if (uiState.isSelectionMode) {
+        SelectionModeActions(itemCallbacks = itemCallbacks)
+    } else {
+        DefaultTopBarActions(
+            uiState = uiState,
+            syncCallbacks = syncCallbacks
+        )
+    }
+}
+
+@Composable
+private fun SelectionModeActions(itemCallbacks: ShoppingListItemCallbacks) {
+    val purchaseSelectedLabel = stringResource(R.string.purchase_selected_items)
+    val deleteSelectedLabel = stringResource(R.string.delete_selected_items)
+
+    IconButton(
+        onClick = itemCallbacks.onPurchaseSelectedItems,
+        modifier = Modifier
+            .testTag(ShoppingListTestTags.PURCHASE_SELECTED_BUTTON)
+            .semantics { contentDescription = purchaseSelectedLabel }
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Check,
+            contentDescription = null
+        )
+    }
+    IconButton(
+        onClick = itemCallbacks.onDeleteSelectedItems,
+        modifier = Modifier
+            .testTag(ShoppingListTestTags.DELETE_SELECTED_BUTTON)
+            .semantics { contentDescription = deleteSelectedLabel }
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Delete,
+            contentDescription = null
+        )
+    }
+}
+
+@Composable
+private fun DefaultTopBarActions(
+    uiState: ShoppingListUiState,
     syncCallbacks: ShoppingListSyncCallbacks
 ) {
     val syncNowLabel = stringResource(R.string.sync_now)
 
-    TopAppBar(
-        title = {},
-        navigationIcon = {
-            Icon(
-                imageVector = Icons.Rounded.ShoppingBag,
-                contentDescription = stringResource(R.string.shopping_list_title),
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .padding(start = 16.dp)
-                    .size(28.dp)
-                    .testTag(ShoppingListTestTags.BRAND_ICON)
-            )
-        },
-        actions = {
-            if (uiState.isSyncConfigured) {
-                IconButton(
-                    onClick = syncCallbacks.onManualSyncRequested,
+    if (uiState.isSyncConfigured) {
+        IconButton(
+            onClick = syncCallbacks.onManualSyncRequested,
+            modifier = Modifier
+                .testTag(ShoppingListTestTags.SYNC_BADGE)
+                .semantics { contentDescription = syncNowLabel }
+        ) {
+            if (uiState.isManualSync || uiState.isBackgroundSync) {
+                CircularProgressIndicator(
                     modifier = Modifier
-                        .testTag(ShoppingListTestTags.SYNC_BADGE)
-                        .semantics { contentDescription = syncNowLabel }
-                ) {
-                    if (uiState.isManualSync || uiState.isBackgroundSync) {
-                        CircularProgressIndicator(
-                            modifier = Modifier
-                                .size(18.dp)
-                                .testTag(ShoppingListTestTags.SYNC_BADGE_SPINNER),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Rounded.Sync,
-                            contentDescription = null
-                        )
-                    }
-                }
-            }
-            IconButton(
-                onClick = syncCallbacks.onSyncSettingsClicked,
-                modifier = Modifier.testTag(ShoppingListTestTags.SYNC_SETTINGS_BUTTON)
-            ) {
+                        .size(18.dp)
+                        .testTag(ShoppingListTestTags.SYNC_BADGE_SPINNER),
+                    strokeWidth = 2.dp
+                )
+            } else {
                 Icon(
-                    imageVector = Icons.Rounded.Settings,
-                    contentDescription = stringResource(R.string.sync_settings)
+                    imageVector = Icons.Rounded.Sync,
+                    contentDescription = null
                 )
             }
         }
-    )
+    }
+
+    IconButton(
+        onClick = syncCallbacks.onSyncSettingsClicked,
+        modifier = Modifier.testTag(ShoppingListTestTags.SYNC_SETTINGS_BUTTON)
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Settings,
+            contentDescription = stringResource(R.string.sync_settings)
+        )
+    }
 }
 
 
@@ -495,35 +587,6 @@ private fun ShoppingSuggestionsList(
 }
 
 @Composable
-private fun BulkPurchaseFab(
-    visible: Boolean,
-    onClick: () -> Unit,
-    bottomClearance: Dp,
-    modifier: Modifier = Modifier
-) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = fadeIn(),
-        exit = fadeOut(),
-        modifier = modifier
-            .navigationBarsPadding()
-            .imePadding()
-            .padding(end = 16.dp, bottom = bottomClearance)
-    ) {
-        FloatingActionButton(
-            onClick = onClick,
-            modifier = Modifier.testTag(ShoppingListTestTags.PURCHASE_SELECTED_FAB),
-            shape = CircleShape
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.Check,
-                contentDescription = stringResource(R.string.purchase_selected_items)
-            )
-        }
-    }
-}
-
-@Composable
 private fun ShoppingItemsContent(
     uiState: ShoppingListUiState,
     itemCallbacks: ShoppingListItemCallbacks,
@@ -594,15 +657,18 @@ private fun androidx.compose.foundation.lazy.LazyListScope.pendingItemsSection(
         return
     }
 
-        items(
+    items(
         items = pendingItems,
         key = { item -> item.id }
     ) { item ->
         PendingItemRow(
             item = item,
             isSelected = item.id in selectedIds,
-            onClick = { itemCallbacks.onPendingItemClick(item.id) },
-            onDeleteRequested = { itemCallbacks.onDeleteItemRequested(item) },
+            callbacks = PendingItemRowCallbacks(
+                onClick = { itemCallbacks.onPendingItemClick(item.id) },
+                onLongClick = { itemCallbacks.onPendingItemLongPress(item.id) },
+                onDeleteRequested = { itemCallbacks.onDeleteItemRequested(item) }
+            ),
             swipeResetTrigger = swipeResetTrigger,
             iconResolver = iconResolver,
             modifier = Modifier.animateItem()
@@ -704,8 +770,7 @@ private fun EmptyStateCard(
 private fun PendingItemRow(
     item: ShoppingItem,
     isSelected: Boolean,
-    onClick: () -> Unit,
-    onDeleteRequested: () -> Unit,
+    callbacks: PendingItemRowCallbacks,
     swipeResetTrigger: String,
     iconResolver: IconResolver,
     modifier: Modifier = Modifier
@@ -735,8 +800,9 @@ private fun PendingItemRow(
             contentColor = contentColor
         ),
         interactions = ShoppingItemRowInteractions(
-            onClick = onClick,
-            onDeleteRequested = onDeleteRequested,
+            onClick = callbacks.onClick,
+            onLongClick = callbacks.onLongClick,
+            onDeleteRequested = callbacks.onDeleteRequested,
             swipeTag = ShoppingListTestTags.swipePendingItem(item.id),
             swipeResetTrigger = swipeResetTrigger
         ),
@@ -826,7 +892,10 @@ private fun ShoppingItemRow(
                 .background(visuals.containerColor)
                 .heightIn(min = 56.dp)
                 .padding(horizontal = 16.dp)
-                .clickable(onClick = interactions.onClick),
+                .combinedClickable(
+                    onClick = interactions.onClick,
+                    onLongClick = interactions.onLongClick
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(

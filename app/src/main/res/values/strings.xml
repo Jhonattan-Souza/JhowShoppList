@@ -4,6 +4,8 @@
     <string name="add_item_label">Add item</string>
     <string name="add_item_placeholder">Milk, coffee, tomatoes\u2026</string>
     <string name="purchase_selected_items">Mark selected items as purchased</string>
+    <string name="delete_selected_items">Delete selected items</string>
+    <string name="exit_selection_mode">Exit selection mode</string>
     <string name="pending_items_title">Pending items</string>
     <string name="purchased_items_title">Purchased history</string>
     <string name="empty_pending_title">Nothing pending yet</string>

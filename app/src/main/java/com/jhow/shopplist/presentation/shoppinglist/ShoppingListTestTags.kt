@@ -3,7 +3,6 @@ package com.jhow.shopplist.presentation.shoppinglist
 object ShoppingListTestTags {
     const val SCREEN = "shopping_list_screen"
     const val INPUT_FIELD = "shopping_list_input"
-    const val PURCHASE_SELECTED_FAB = "purchase_selected_fab"
     const val PENDING_SECTION = "pending_section"
     const val PURCHASED_SECTION = "purchased_section"
     const val SECTION_DIVIDER = "shopping_list_divider"
@@ -27,6 +26,9 @@ object ShoppingListTestTags {
     const val SYNC_STATE_TEXT = "sync_state_text"
     const val SYNC_SETTINGS_SHEET_CONTENT = "sync_settings_sheet_content"
     const val SYNC_PROGRESS_INDICATOR = "sync_progress_indicator"
+    const val EXIT_SELECTION_BUTTON = "exit_selection_button"
+    const val PURCHASE_SELECTED_BUTTON = "purchase_selected_button"
+    const val DELETE_SELECTED_BUTTON = "delete_selected_button"
 
     fun pendingItem(id: String): String = "pending_item_$id"
 

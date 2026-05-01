@@ -10,11 +10,12 @@ data class ShoppingListUiState(
     val pendingItems: List<ShoppingItem> = emptyList(),
     val purchasedItems: List<ShoppingItem> = emptyList(),
     val selectedIds: Set<String> = emptySet(),
+    val isSelectionMode: Boolean = false,
     val itemPendingDeletion: ShoppingItem? = null,
     val isManualSync: Boolean = false,
     val isBackgroundSync: Boolean = false,
     val isSyncConfigured: Boolean = false
 ) {
     val isBulkActionVisible: Boolean
-        get() = selectedIds.isNotEmpty()
+        get() = isSelectionMode
 }
