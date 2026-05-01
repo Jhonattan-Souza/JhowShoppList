@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.jhow.shopplist.domain.icon.IconBucket
@@ -160,5 +161,26 @@ class ShoppingListTopBarTest {
         composeRule.onNodeWithTag(ShoppingListTestTags.SYNC_BADGE_SPINNER).assertIsDisplayed()
         composeRule.onNodeWithContentDescription("Sync now").assertIsDisplayed()
         composeRule.onAllNodesWithTag(ShoppingListTestTags.MANUAL_SYNC_LOADER).assertCountEquals(0)
+    }
+
+    @Test
+    fun selectionMode_topBarShowsContextualActions() {
+        composeRule.setContent {
+            ShoppingListScreen(
+                uiState = ShoppingListUiState(
+                    selectedIds = setOf("item-1", "item-2"),
+                    isSelectionMode = true
+                ),
+                snackbarHostState = SnackbarHostState(),
+                iconResolver = fakeIconResolver
+            )
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.EXIT_SELECTION_BUTTON).assertIsDisplayed()
+        composeRule.onNodeWithTag(ShoppingListTestTags.PURCHASE_SELECTED_BUTTON).assertIsDisplayed()
+        composeRule.onNodeWithTag(ShoppingListTestTags.DELETE_SELECTED_BUTTON).assertIsDisplayed()
+        composeRule.onNodeWithText("2").assertIsDisplayed()
+        composeRule.onAllNodesWithTag(ShoppingListTestTags.SYNC_SETTINGS_BUTTON).assertCountEquals(0)
     }
 }

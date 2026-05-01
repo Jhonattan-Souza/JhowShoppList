@@ -35,6 +35,7 @@ class ShoppingListViewModelTest {
     private lateinit var repository: FakeShoppingListRepository
     private lateinit var syncScheduler: FakeShoppingSyncScheduler
     private lateinit var calDavConfigRepository: FakeCalDavConfigRepository
+    private lateinit var selectionController: SelectionController
     private lateinit var viewModel: ShoppingListViewModel
 
     @Before
@@ -42,6 +43,7 @@ class ShoppingListViewModelTest {
         repository = FakeShoppingListRepository()
         syncScheduler = FakeShoppingSyncScheduler()
         calDavConfigRepository = FakeCalDavConfigRepository()
+        selectionController = SelectionController()
         viewModel = ShoppingListViewModel(
             observePendingItemsUseCase = ObservePendingItemsUseCase(repository),
             observePurchasedItemsUseCase = ObservePurchasedItemsUseCase(repository),
@@ -52,7 +54,8 @@ class ShoppingListViewModelTest {
             markPurchasedItemPendingUseCase = MarkPurchasedItemPendingUseCase(repository),
             requestShoppingSyncUseCase = RequestShoppingSyncUseCase(syncScheduler),
             observeSyncStateUseCase = ObserveSyncStateUseCase(syncScheduler),
-            getCalDavSyncConfigUseCase = GetCalDavSyncConfigUseCase(calDavConfigRepository)
+            getCalDavSyncConfigUseCase = GetCalDavSyncConfigUseCase(calDavConfigRepository),
+            selectionController = selectionController
         )
     }
 
@@ -188,17 +191,16 @@ class ShoppingListViewModelTest {
     }
 
     @Test
-    fun `pending item click toggles selection`() = runTest {
+    fun `pending item click marks item purchased immediately`() = runTest {
         repository.seedItems(listOf(samplePendingItem(id = "rice")))
         advanceUntilIdle()
 
         viewModel.onPendingItemClicked("rice")
         advanceUntilIdle()
-        assertEquals(setOf("rice"), viewModel.uiState.value.selectedIds)
 
-        viewModel.onPendingItemClicked("rice")
-        advanceUntilIdle()
-        assertEquals(emptySet<String>(), viewModel.uiState.value.selectedIds)
+        assertEquals(listOf(setOf("rice")), repository.purchasedRequests)
+        assertEquals(listOf("rice"), viewModel.uiState.value.purchasedItems.map { it.id })
+        assertEquals(1, syncScheduler.requestCount)
     }
 
     @Test
@@ -211,7 +213,7 @@ class ShoppingListViewModelTest {
         )
         advanceUntilIdle()
 
-        viewModel.onPendingItemClicked("milk")
+        viewModel.onPendingItemLongPressed("milk")
         viewModel.onPendingItemClicked("tea")
         advanceUntilIdle()
 
@@ -229,11 +231,101 @@ class ShoppingListViewModelTest {
         repository.seedItems(listOf(samplePendingItem(id = "eggs")))
         advanceUntilIdle()
 
-        viewModel.onPendingItemClicked("eggs")
+        viewModel.onPendingItemLongPressed("eggs")
         advanceUntilIdle()
         repository.seedItems(listOf(samplePurchasedItem(id = "eggs")))
         advanceUntilIdle()
 
+        assertEquals(emptySet<String>(), viewModel.uiState.value.selectedIds)
+    }
+
+    @Test
+    fun `long pressing pending item enters multi select with item selected`() = runTest {
+        repository.seedItems(listOf(samplePendingItem(id = "rice")))
+        advanceUntilIdle()
+
+        viewModel.onPendingItemLongPressed("rice")
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+        assertEquals(setOf("rice"), viewModel.uiState.value.selectedIds)
+    }
+
+    @Test
+    fun `pending item click toggles selection while multi select is active`() = runTest {
+        repository.seedItems(
+            listOf(
+                samplePendingItem(id = "rice"),
+                samplePendingItem(id = "beans")
+            )
+        )
+        advanceUntilIdle()
+
+        viewModel.onPendingItemLongPressed("rice")
+        advanceUntilIdle()
+        viewModel.onPendingItemClicked("beans")
+        advanceUntilIdle()
+
+        assertEquals(setOf("rice", "beans"), viewModel.uiState.value.selectedIds)
+        assertTrue(repository.purchasedRequests.isEmpty())
+    }
+
+    @Test
+    fun `selection mode exits when toggling leaves selection empty`() = runTest {
+        repository.seedItems(listOf(samplePendingItem(id = "rice")))
+        advanceUntilIdle()
+
+        viewModel.onPendingItemLongPressed("rice")
+        advanceUntilIdle()
+        viewModel.onPendingItemClicked("rice")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+        assertEquals(emptySet<String>(), viewModel.uiState.value.selectedIds)
+    }
+
+    @Test
+    fun `exiting selection mode clears selected ids`() = runTest {
+        repository.seedItems(
+            listOf(
+                samplePendingItem(id = "rice"),
+                samplePendingItem(id = "beans")
+            )
+        )
+        advanceUntilIdle()
+
+        viewModel.onPendingItemLongPressed("rice")
+        advanceUntilIdle()
+        viewModel.onPendingItemClicked("beans")
+        advanceUntilIdle()
+
+        viewModel.onSelectionModeExited()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+        assertEquals(emptySet<String>(), viewModel.uiState.value.selectedIds)
+    }
+
+    @Test
+    fun `delete selected items removes selected rows and exits selection mode`() = runTest {
+        repository.seedItems(
+            listOf(
+                samplePendingItem(id = "rice"),
+                samplePendingItem(id = "beans")
+            )
+        )
+        advanceUntilIdle()
+
+        viewModel.onPendingItemLongPressed("rice")
+        advanceUntilIdle()
+        viewModel.onPendingItemClicked("beans")
+        advanceUntilIdle()
+
+        viewModel.onDeleteSelectedItems()
+        advanceUntilIdle()
+
+        assertEquals(listOf("rice", "beans"), repository.deletedRequests)
+        assertFalse(viewModel.uiState.value.isSelectionMode)
         assertEquals(emptySet<String>(), viewModel.uiState.value.selectedIds)
     }
 

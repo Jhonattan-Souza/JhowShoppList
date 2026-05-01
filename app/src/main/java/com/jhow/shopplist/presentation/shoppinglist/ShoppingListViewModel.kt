@@ -35,6 +35,7 @@ private data class ShoppingListIntermediateState(
     val currentInput: String,
     val currentSuggestions: List<String>,
     val selectedIds: Set<String>,
+    val isSelectionMode: Boolean,
     val itemPendingDeletion: ShoppingItem?
 )
 
@@ -50,29 +51,43 @@ class ShoppingListViewModel @Inject constructor(
     private val markPurchasedItemPendingUseCase: MarkPurchasedItemPendingUseCase,
     private val requestShoppingSyncUseCase: RequestShoppingSyncUseCase,
     observeSyncStateUseCase: ObserveSyncStateUseCase,
-    getCalDavSyncConfigUseCase: GetCalDavSyncConfigUseCase
+    getCalDavSyncConfigUseCase: GetCalDavSyncConfigUseCase,
+    private val selectionController: SelectionController
 ) : ViewModel() {
     private val inputValue = MutableStateFlow("")
-    private val selectedIds = MutableStateFlow(emptySet<String>())
     private val itemPendingDeletion = MutableStateFlow<ShoppingItem?>(null)
     private val inputWithSuggestions = combine(observeItemNamesUseCase(), inputValue) { allItemNames, currentInput ->
         currentInput to buildSuggestions(allItemNames = allItemNames, currentInput = currentInput)
     }
 
-    private val combinedState = combine(
-        observePendingItemsUseCase(),
-        observePurchasedItemsUseCase(),
+    private val viewSignals = combine(
         inputWithSuggestions,
-        selectedIds,
+        selectionController.selected,
+        selectionController.isActive,
         itemPendingDeletion
-    ) { pendingItems, purchasedItems, inputSuggestions, selectedIds, itemPendingDeletion ->
-        ShoppingListIntermediateState(
-            pendingItems = pendingItems,
-            purchasedItems = purchasedItems,
+    ) { inputSuggestions, selectedIds, isSelectionMode, pendingDeletion ->
+        ViewSignals(
             currentInput = inputSuggestions.first,
             currentSuggestions = inputSuggestions.second,
             selectedIds = selectedIds,
-            itemPendingDeletion = itemPendingDeletion
+            isSelectionMode = isSelectionMode,
+            itemPendingDeletion = pendingDeletion
+        )
+    }
+
+    private val combinedState = combine(
+        observePendingItemsUseCase(),
+        observePurchasedItemsUseCase(),
+        viewSignals
+    ) { pendingItems, purchasedItems, signals ->
+        ShoppingListIntermediateState(
+            pendingItems = pendingItems,
+            purchasedItems = purchasedItems,
+            currentInput = signals.currentInput,
+            currentSuggestions = signals.currentSuggestions,
+            selectedIds = signals.selectedIds,
+            isSelectionMode = signals.isSelectionMode,
+            itemPendingDeletion = signals.itemPendingDeletion
         )
     }
 
@@ -118,6 +133,7 @@ class ShoppingListViewModel @Inject constructor(
                 pendingItems = intermediate.pendingItems,
                 purchasedItems = distinctPurchasedItems,
                 selectedIds = intermediate.selectedIds.intersect(pendingIds),
+                isSelectionMode = intermediate.isSelectionMode && intermediate.selectedIds.any { it in pendingIds },
                 itemPendingDeletion = visibleItems.firstOrNull { it.id == intermediate.itemPendingDeletion?.id },
                 isManualSync = syncing && latch,
                 isBackgroundSync = syncing && !latch,
@@ -150,26 +166,55 @@ class ShoppingListViewModel @Inject constructor(
     }
 
     fun onPendingItemClicked(id: String) {
-        selectedIds.update { currentIds ->
-            if (id in currentIds) currentIds - id else currentIds + id
+        if (selectionController.isActive.value) {
+            selectionController.toggle(id)
+            return
+        }
+
+        viewModelScope.launch {
+            markSelectedItemsPurchasedUseCase(setOf(id))
+            requestSync()
         }
     }
 
+    fun onPendingItemLongPressed(id: String) {
+        selectionController.enter(id)
+    }
+
     fun onPurchaseSelectedItems() {
-        val ids = selectedIds.value
+        val ids = selectionController.selected.value
         if (ids.isEmpty()) return
 
         viewModelScope.launch {
             markSelectedItemsPurchasedUseCase(ids)
-            selectedIds.value = emptySet()
+            selectionController.exit()
             requestSync()
         }
+    }
+
+    fun onDeleteSelectedItems() {
+        val ids = selectionController.selected.value
+        if (ids.isEmpty()) return
+
+        viewModelScope.launch {
+            ids.forEach { id ->
+                deleteShoppingItemUseCase(id)
+            }
+            selectionController.exit()
+            requestSync()
+        }
+    }
+
+    fun onSelectionModeExited() {
+        selectionController.exit()
     }
 
     fun onPurchasedItemClicked(id: String) {
         viewModelScope.launch {
             markPurchasedItemPendingUseCase(id)
-            selectedIds.update { it - id }
+            if (id in selectionController.selected.value) {
+                selectionController.toggle(id)
+            }
             requestSync()
         }
     }
@@ -187,7 +232,9 @@ class ShoppingListViewModel @Inject constructor(
 
         viewModelScope.launch {
             deleteShoppingItemUseCase(item.id)
-            selectedIds.update { it - item.id }
+            if (item.id in selectionController.selected.value) {
+                selectionController.toggle(item.id)
+            }
             itemPendingDeletion.value = null
             requestSync()
         }
@@ -243,4 +290,12 @@ class ShoppingListViewModel @Inject constructor(
             val score: Int
         )
     }
+
+    private data class ViewSignals(
+        val currentInput: String,
+        val currentSuggestions: List<String>,
+        val selectedIds: Set<String>,
+        val isSelectionMode: Boolean,
+        val itemPendingDeletion: ShoppingItem?
+    )
 }

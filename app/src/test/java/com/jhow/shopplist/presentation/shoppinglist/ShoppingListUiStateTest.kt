@@ -7,7 +7,7 @@ import org.junit.Test
 class ShoppingListUiStateTest {
     @Test
     fun `bulk action is visible when selection exists`() {
-        val uiState = ShoppingListUiState(selectedIds = setOf("item-1"))
+        val uiState = ShoppingListUiState(selectedIds = setOf("item-1"), isSelectionMode = true)
 
         assertTrue(uiState.isBulkActionVisible)
     }
