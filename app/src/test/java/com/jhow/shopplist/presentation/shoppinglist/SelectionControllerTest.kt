@@ -57,4 +57,14 @@ class SelectionControllerTest {
         assertFalse(controller.isActive.value)
         assertEquals(emptySet<String>(), controller.selected.value)
     }
+
+    @Test
+    fun `retaining only valid ids exits when selection becomes empty`() {
+        controller.enter("milk")
+
+        controller.retainOnly(setOf("tea"))
+
+        assertFalse(controller.isActive.value)
+        assertEquals(emptySet<String>(), controller.selected.value)
+    }
 }
