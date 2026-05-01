@@ -3,7 +3,7 @@
 ## Glossary
 
 ### Manual sync
-A sync gesture explicitly initiated by the user — currently, tapping the sync badge in the top app bar. Manual syncs surface a prominent, centered progress indicator on the shopping list screen for the duration of the in-flight sync (and any sync work that overlaps with it).
+A sync gesture explicitly initiated by the user — currently, tapping the sync badge in the top app bar. Manual syncs surface a non-blocking linear progress indicator under the top app bar for the duration of the in-flight sync (and any sync work that overlaps with it). The list remains fully interactive during the sync; manual sync never blocks user input. This is a presentation choice that honors the offline-first contract: even an explicitly user-requested sync never takes over the screen.
 
 ### Background sync
 A sync triggered as a side effect of a local mutation (add, purchase, unpurchase, delete) or by a scheduler/lifecycle event (app resume, network reconnect, periodic tick). Background syncs surface only a small spinner in the top app bar; they never take over the screen.

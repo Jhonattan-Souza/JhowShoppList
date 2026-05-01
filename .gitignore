@@ -49,6 +49,7 @@ credentials.json
 service-account*.json
 secrets.properties
 secrets.*.properties
+.worktrees
 
 # Kotlin
 .kotlin/
