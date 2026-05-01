@@ -11,10 +11,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imeNestedScroll
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -74,6 +76,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.focus.FocusRequester
@@ -136,6 +139,8 @@ private data class ShoppingListContentLayout(
     val innerPadding: PaddingValues,
     val inputBarHeight: Dp
 )
+
+internal fun shoppingListBottomContentPadding(inputBarHeight: Dp): Dp = inputBarHeight
 
 internal val shoppingListWideSurfaceShape: Shape = RoundedCornerShape(percent = 50)
 
@@ -289,7 +294,8 @@ private fun ShoppingListScreenContent(
             uiState = uiState,
             itemCallbacks = itemCallbacks,
             modifier = Modifier.fillMaxSize(),
-            iconResolver = iconResolver
+            iconResolver = iconResolver,
+            bottomContentPadding = shoppingListBottomContentPadding(layout.inputBarHeight)
         )
 
         if (uiState.isManualSync) {
@@ -521,6 +527,13 @@ private fun ShoppingInputField(
     focusRequester: FocusRequester,
     onContinuousEntryRequested: () -> Unit
 ) {
+    val canSubmit = value.isNotBlank()
+
+    fun submitAndRestoreContinuousEntry() {
+        inputCallbacks.onAddItem()
+        onContinuousEntryRequested()
+    }
+
     OutlinedTextField(
         value = value,
         onValueChange = inputCallbacks.onValueChange,
@@ -532,18 +545,27 @@ private fun ShoppingInputField(
         placeholder = { Text(text = stringResource(R.string.add_item_placeholder)) },
         shape = shoppingListWideSurfaceShape,
         singleLine = true,
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+        keyboardOptions = KeyboardOptions(
+            capitalization = KeyboardCapitalization.Sentences,
+            autoCorrectEnabled = false,
+            imeAction = ImeAction.Done
+        ),
         keyboardActions = KeyboardActions(
             onDone = {
-                inputCallbacks.onAddItem()
-                onContinuousEntryRequested()
+                submitAndRestoreContinuousEntry()
             }
         ),
         trailingIcon = {
-            Icon(
-                imageVector = Icons.Rounded.AddTask,
-                contentDescription = null
-            )
+            IconButton(
+                onClick = ::submitAndRestoreContinuousEntry,
+                enabled = canSubmit,
+                modifier = Modifier.testTag(ShoppingListTestTags.SUBMIT_INPUT_BUTTON)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.AddTask,
+                    contentDescription = stringResource(R.string.add_item_submit)
+                )
+            }
         }
     )
 }
@@ -586,20 +608,24 @@ private fun ShoppingSuggestionsList(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ShoppingItemsContent(
     uiState: ShoppingListUiState,
     itemCallbacks: ShoppingListItemCallbacks,
     modifier: Modifier = Modifier,
-    iconResolver: IconResolver
+    iconResolver: IconResolver,
+    bottomContentPadding: Dp
 ) {
     val swipeResetTrigger = uiState.itemPendingDeletion?.id.orEmpty()
     val emptyPendingTitle = stringResource(R.string.empty_pending_title)
     val emptyPurchasedTitle = stringResource(R.string.empty_purchased_title)
 
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 100.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .imeNestedScroll(),
+        contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = bottomContentPadding),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item(key = ShoppingListTestTags.PENDING_SECTION) {

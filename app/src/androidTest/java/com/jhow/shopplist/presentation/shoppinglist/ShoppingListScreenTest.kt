@@ -1,7 +1,9 @@
 package com.jhow.shopplist.presentation.shoppinglist
 
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -187,6 +189,29 @@ class ShoppingListScreenTest {
         }
 
         assertTrue(composeRule.onAllNodesWithText("Yogurt").fetchSemanticsNodes().isNotEmpty())
+    }
+
+    @Test
+    fun tappingSubmitIconAddsCurrentInputToPendingList() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("Yogurt")
+        composeRule.onNodeWithTag(ShoppingListTestTags.SUBMIT_INPUT_BUTTON).performClick()
+        composeRule.waitForIdle()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithText("Yogurt").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        assertTrue(composeRule.onAllNodesWithText("Yogurt").fetchSemanticsNodes().isNotEmpty())
+    }
+
+    @Test
+    fun submitIconIsDisabledUntilInputHasText() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.SUBMIT_INPUT_BUTTON).assertIsNotEnabled()
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("Yogurt")
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.SUBMIT_INPUT_BUTTON).assertIsEnabled()
     }
 
     @Test
