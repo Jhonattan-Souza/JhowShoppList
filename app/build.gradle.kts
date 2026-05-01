@@ -186,19 +186,29 @@ tasks.matching { task -> task.name in signingRequiredTaskNames }
     }
 
 tasks.matching { task -> task.name == "assembleRelease" }.configureEach {
-    doFirst {
-        if (requireReleaseSigning) {
-            check(hasReleaseSigningConfig) { releaseSigningMissingMessage }
+    val isReleaseSigningConfigured = hasReleaseSigningConfig
+    val shouldRequireReleaseSigning = requireReleaseSigning
+    val missingSigningMessage = releaseSigningMissingMessage
+
+    doFirst(
+        "validateReleaseSigning",
+        org.gradle.api.Action<org.gradle.api.Task> {
+            if (shouldRequireReleaseSigning) {
+                check(isReleaseSigningConfigured) { missingSigningMessage }
+            }
         }
-    }
-    doLast {
-        if (!hasReleaseSigningConfig && !requireReleaseSigning) {
-            logger.warn(
-                "assembleRelease completed without release signing. " +
-                    "The generated release APK is unsigned and must not be distributed."
-            )
+    )
+    doLast(
+        "warnUnsignedRelease",
+        org.gradle.api.Action<org.gradle.api.Task> {
+            if (!isReleaseSigningConfigured && !shouldRequireReleaseSigning) {
+                println(
+                    "assembleRelease completed without release signing. " +
+                        "The generated release APK is unsigned and must not be distributed."
+                )
+            }
         }
-    }
+    )
 }
 
 jacoco {
