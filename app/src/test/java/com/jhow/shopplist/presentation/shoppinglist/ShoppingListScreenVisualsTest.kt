@@ -40,4 +40,12 @@ class ShoppingListScreenVisualsTest {
     fun `list bottom padding follows measured composer height`() {
         assertEquals(148.dp, shoppingListBottomContentPadding(inputBarHeight = 148.dp))
     }
+
+    @Test
+    fun `strikethrough y position follows rendered glyph center`() {
+        assertEquals(
+            18f,
+            shoppingListStrikethroughCenterY(glyphTopPx = 10f, glyphBottomPx = 26f)
+        )
+    }
 }

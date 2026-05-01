@@ -208,6 +208,11 @@ internal fun shoppingListBottomContentPadding(inputBarHeight: Dp): Dp = inputBar
 
 internal val shoppingListWideSurfaceShape: Shape = RoundedCornerShape(percent = 50)
 
+internal fun shoppingListStrikethroughCenterY(
+    glyphTopPx: Float,
+    glyphBottomPx: Float
+): Float = (glyphTopPx + glyphBottomPx) / 2f
+
 internal enum class ShoppingListColorRole {
     PrimaryContainer,
     OnPrimaryContainer,
@@ -1261,6 +1266,7 @@ private fun AnimatedStrikethroughText(
     modifier: Modifier = Modifier
 ) {
     val progress = remember { Animatable(if (isStrikethroughVisible && !animateFromStart) 1f else 0f) }
+    var strikethroughCenterY by remember(text) { mutableStateOf<Float?>(null) }
     LaunchedEffect(isStrikethroughVisible) {
         progress.animateTo(
             targetValue = if (isStrikethroughVisible) 1f else 0f,
@@ -1276,11 +1282,21 @@ private fun AnimatedStrikethroughText(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             color = color,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            onTextLayout = { result ->
+                val firstGlyphIndex = text.indexOfFirst { !it.isWhitespace() }
+                if (firstGlyphIndex >= 0) {
+                    val glyphBounds = result.getBoundingBox(firstGlyphIndex)
+                    strikethroughCenterY = shoppingListStrikethroughCenterY(
+                        glyphTopPx = glyphBounds.top,
+                        glyphBottomPx = glyphBounds.bottom
+                    )
+                }
+            }
         )
         Canvas(modifier = Modifier.fillMaxSize()) {
             if (progress.value > 0f) {
-                val y = size.height * STRIKETHROUGH_CENTER_Y_FRACTION
+                val y = strikethroughCenterY ?: size.height * STRIKETHROUGH_CENTER_Y_FRACTION
                 drawLine(
                     color = color,
                     start = Offset(0f, y),
