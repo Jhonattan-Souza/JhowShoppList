@@ -9,9 +9,15 @@
     <string name="exit_selection_mode">Exit selection mode</string>
     <string name="pending_items_title">Pending items</string>
     <string name="purchased_items_title">Purchased history</string>
-    <string name="empty_pending_title">Nothing pending yet</string>
-    <string name="empty_purchased_title">No purchase history</string>
+    <string name="empty_pending_helper">Add your first item from the input bar.</string>
+    <string name="empty_purchased_helper">Purchased items will appear here.</string>
     <string name="delete_item_swipe_label">Delete item</string>
+    <string name="shopping_item_state_pending">pending</string>
+    <string name="shopping_item_state_selected">selected</string>
+    <string name="shopping_item_state_purchased">purchased</string>
+    <string name="shopping_item_action_mark_purchased">Mark purchased</string>
+    <string name="shopping_item_action_restore_pending">Restore to pending</string>
+    <string name="shopping_item_action_delete">Delete</string>
     <string name="delete_item_snackbar_single">Item deleted</string>
     <string name="delete_item_undo">Undo</string>
     <plurals name="delete_item_snackbar_multiple">

@@ -1,8 +1,15 @@
 package com.jhow.shopplist.presentation.shoppinglist
 
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.state.ToggleableState
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -131,6 +138,55 @@ class ShoppingListScreenTest {
     }
 
     @Test
+    fun rowsExposeLocalizedAccessibilityStatesAndActions() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-apples"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "pending"))
+        assertCustomAction(ShoppingListTestTags.pendingItem("pending-apples"), "Mark purchased")
+        assertCustomAction(ShoppingListTestTags.pendingItem("pending-apples"), "Delete")
+
+        expandPurchasedSection()
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.purchasedItem("purchased-coffee"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "purchased"))
+        assertCustomAction(ShoppingListTestTags.purchasedItem("purchased-coffee"), "Restore to pending")
+        assertCustomAction(ShoppingListTestTags.purchasedItem("purchased-coffee"), "Delete")
+    }
+
+    @Test
+    fun selectionModeRowsExposeCheckboxSemantics() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-apples")).performTouchInput {
+            longClick()
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-apples"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "selected"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.On))
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-bread"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "pending"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ToggleableState, ToggleableState.Off))
+    }
+
+    @Test
+    fun accessibilityMarkPurchasedActionPurchasesItemEvenWhenSelectionModeIsActive() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-apples")).performTouchInput {
+            longClick()
+        }
+        composeRule.waitForIdle()
+
+        performCustomAction(ShoppingListTestTags.pendingItem("pending-bread"), "Mark purchased")
+        composeRule.waitForIdle()
+        expandPurchasedSection()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.purchasedItem("pending-bread")).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    @Test
     fun tappingPendingItemWhileSelectionModeActiveTogglesSelectionInsteadOfPurchasing() {
         composeRule.onNodeWithTag(ShoppingListTestTags.pendingItem("pending-apples")).performTouchInput {
             longClick()
@@ -221,6 +277,26 @@ class ShoppingListScreenTest {
         assertTrue(
             composeRule.onAllNodesWithTag(ShoppingListTestTags.purchasedItem("purchased-only")).fetchSemanticsNodes().isNotEmpty()
         )
+    }
+
+    @Test
+    fun emptyListShowsMinimalPendingAndPurchasedEmptyStates() {
+        runBlocking {
+            database?.shoppingItemDao()?.replaceAll(emptyList())
+        }
+        composeRule.waitForIdle()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.EMPTY_PENDING_ICON).fetchSemanticsNodes().isNotEmpty() &&
+                composeRule.onAllNodesWithTag(ShoppingListTestTags.EMPTY_PENDING_TEXT).fetchSemanticsNodes().isNotEmpty() &&
+                composeRule.onAllNodesWithTag(ShoppingListTestTags.EMPTY_PURCHASED_ICON).fetchSemanticsNodes().isNotEmpty() &&
+                composeRule.onAllNodesWithTag(ShoppingListTestTags.EMPTY_PURCHASED_TEXT).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        assertTrue(composeRule.onAllNodesWithText("Add your first item from the input bar.").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(composeRule.onAllNodesWithText("Purchased items will appear here.").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(composeRule.onAllNodesWithText("Nothing pending yet").fetchSemanticsNodes().isEmpty())
+        assertTrue(composeRule.onAllNodesWithText("No purchase history").fetchSemanticsNodes().isEmpty())
     }
 
     @Test
@@ -377,7 +453,7 @@ class ShoppingListScreenTest {
     }
 
     @Test
-    fun tappingSuggestionKeepsInputFocusedForContinuousEntry() {
+    fun tappingSuggestionDismissesInputFocus() {
         composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("co")
         composeRule.waitForIdle()
 
@@ -386,6 +462,28 @@ class ShoppingListScreenTest {
         }
 
         composeRule.onNodeWithTag(ShoppingListTestTags.suggestionItem("Coffee")).performClick()
+        composeRule.waitForIdle()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.pendingItem("purchased-coffee")).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).assertIsNotFocused()
+    }
+
+    @Test
+    fun longPressingSuggestionKeepsInputFocusedForContinuousEntry() {
+        composeRule.onNodeWithTag(ShoppingListTestTags.INPUT_FIELD).performTextInput("co")
+        composeRule.waitForIdle()
+
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithTag(ShoppingListTestTags.suggestionItem("Coffee")).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        composeRule.onNodeWithTag(ShoppingListTestTags.suggestionItem("Coffee")).performTouchInput {
+            longClick()
+        }
         composeRule.waitForIdle()
 
         composeRule.waitUntil(timeoutMillis = 5_000) {
@@ -534,6 +632,23 @@ class ShoppingListScreenTest {
     private fun expandPurchasedSection() {
         composeRule.onNodeWithTag(ShoppingListTestTags.PURCHASED_SECTION).performClick()
         composeRule.waitForIdle()
+    }
+
+    private fun assertCustomAction(tag: String, label: String) {
+        val actions = composeRule.onNodeWithTag(tag)
+            .fetchSemanticsNode()
+            .config[SemanticsActions.CustomActions]
+        assertTrue(actions.any { action -> action.label == label })
+    }
+
+    private fun performCustomAction(tag: String, label: String) {
+        val action = composeRule.onNodeWithTag(tag)
+            .fetchSemanticsNode()
+            .config[SemanticsActions.CustomActions]
+            .first { action -> action.label == label }
+        composeRule.runOnIdle {
+            assertTrue(action.action())
+        }
     }
 
 

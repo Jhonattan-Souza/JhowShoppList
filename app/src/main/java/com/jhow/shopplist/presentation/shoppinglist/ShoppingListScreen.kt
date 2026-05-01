@@ -2,8 +2,15 @@ package com.jhow.shopplist.presentation.shoppinglist
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -65,25 +72,34 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -94,6 +110,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jhow.shopplist.R
 import com.jhow.shopplist.domain.model.ShoppingItem
 import com.jhow.shopplist.presentation.icon.IconResolver
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class ShoppingListInputCallbacks(
     val onValueChange: (String) -> Unit = {},
@@ -103,6 +121,7 @@ class ShoppingListInputCallbacks(
 
 class ShoppingListItemCallbacks(
     val onPendingItemClick: (String) -> Unit = {},
+    val onPendingItemMarkPurchased: (String) -> Unit = {},
     val onPendingItemLongPress: (String) -> Unit = {},
     val onPurchasedItemClick: (String) -> Unit = {},
     val onPurchaseSelectedItems: () -> Unit = {},
@@ -117,24 +136,65 @@ class ShoppingListSyncCallbacks(
     val onSyncSettingsClicked: () -> Unit = {}
 )
 
+private const val EMPTY_STATE_ICON_ALPHA = 0.5f
+private const val STRIKETHROUGH_CENTER_Y_FRACTION = 0.52f
+private const val STRIKETHROUGH_ANIMATION_MILLIS = 200
+
+private data class ShoppingListContentDependencies(
+    val iconResolver: IconResolver,
+    val haptics: HapticVocabulary
+)
+
 private data class ShoppingItemRowVisuals(
     val leadingIcon: androidx.compose.ui.graphics.vector.ImageVector,
     val containerColor: androidx.compose.ui.graphics.Color,
     val contentColor: androidx.compose.ui.graphics.Color,
-    val textDecoration: TextDecoration? = null,
+    val showStrikethrough: Boolean = false,
     val rowAlpha: Float = 1f
 )
 
 private data class PendingItemRowCallbacks(
     val onClick: () -> Unit,
     val onLongClick: () -> Unit,
+    val onMarkPurchased: () -> Unit,
     val onDeleteRequested: () -> Unit
+)
+
+private data class PendingItemRowState(
+    val item: ShoppingItem,
+    val isSelected: Boolean,
+    val isSelectionMode: Boolean,
+    val animatePurchaseStrikethrough: Boolean = false
+)
+
+private data class PendingItemsSectionState(
+    val items: List<ShoppingItem>,
+    val selectedIds: Set<String>,
+    val isSelectionMode: Boolean,
+    val purchasingItems: Map<String, ShoppingItem>,
+    val emptyText: String
+)
+
+private data class PendingPurchaseAnimationCallbacks(
+    val onStarted: (ShoppingItem) -> Unit,
+    val onFinished: (String) -> Unit
+)
+
+private data class PurchasedItemsSectionState(
+    val items: List<ShoppingItem>,
+    val animatedPurchaseIds: Set<String>
+)
+
+private data class PurchasedItemRowState(
+    val item: ShoppingItem,
+    val animatePurchaseStrikethrough: Boolean
 )
 
 private data class ShoppingItemRowInteractions(
     val onClick: () -> Unit,
     val onLongClick: () -> Unit = {},
     val onDeleteRequested: () -> Unit,
+    val onSwipeThresholdCrossed: () -> Unit,
     val swipeTag: String,
     val swipeResetTrigger: String
 )
@@ -204,6 +264,7 @@ fun ShoppingListRoute(
     val itemCallbacks = remember(viewModel) {
         ShoppingListItemCallbacks(
             onPendingItemClick = viewModel::onPendingItemClicked,
+            onPendingItemMarkPurchased = viewModel::onPendingItemMarkPurchased,
             onPendingItemLongPress = viewModel::onPendingItemLongPressed,
             onPurchasedItemClick = viewModel::onPurchasedItemClicked,
             onPurchaseSelectedItems = viewModel::onPurchaseSelectedItems,
@@ -229,6 +290,12 @@ fun ShoppingListRoute(
     )
 }
 
+@Composable
+private fun rememberHapticVocabulary(): HapticVocabulary {
+    val hapticFeedback = LocalHapticFeedback.current
+    return remember(hapticFeedback) { HapticVocabulary(hapticFeedback) }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShoppingListScreen(
@@ -241,6 +308,7 @@ fun ShoppingListScreen(
     iconResolver: IconResolver
 ) {
     val focusManager = LocalFocusManager.current
+    val haptics = rememberHapticVocabulary()
     var inputBarContentHeightPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
 
@@ -263,7 +331,8 @@ fun ShoppingListScreen(
                 ShoppingListTopAppBar(
                     uiState = uiState,
                     itemCallbacks = itemCallbacks,
-                    syncCallbacks = syncCallbacks
+                    syncCallbacks = syncCallbacks,
+                    haptics = haptics
                 )
                 if (uiState.isManualSync) {
                     LinearProgressIndicator(
@@ -288,7 +357,10 @@ fun ShoppingListScreen(
             inputCallbacks = inputCallbacks,
             itemCallbacks = itemCallbacks,
             onInputBarHeightChanged = { inputBarContentHeightPx = it },
-            iconResolver = iconResolver
+            dependencies = ShoppingListContentDependencies(
+                iconResolver = iconResolver,
+                haptics = haptics
+            )
         )
     }
 }
@@ -335,7 +407,7 @@ private fun ShoppingListScreenContent(
     inputCallbacks: ShoppingListInputCallbacks,
     itemCallbacks: ShoppingListItemCallbacks,
     onInputBarHeightChanged: (Int) -> Unit,
-    iconResolver: IconResolver
+    dependencies: ShoppingListContentDependencies
 ) {
     Box(
         modifier = Modifier
@@ -346,14 +418,15 @@ private fun ShoppingListScreenContent(
             uiState = uiState,
             itemCallbacks = itemCallbacks,
             modifier = Modifier.fillMaxSize(),
-            iconResolver = iconResolver,
-            bottomContentPadding = shoppingListBottomContentPadding(layout.inputBarHeight)
+            bottomContentPadding = shoppingListBottomContentPadding(layout.inputBarHeight),
+            dependencies = dependencies
         )
         ShoppingInputBar(
             value = uiState.inputValue,
             suggestions = uiState.suggestions,
             inputCallbacks = inputCallbacks,
             onContentHeightChanged = onInputBarHeightChanged,
+            haptics = dependencies.haptics,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
@@ -365,7 +438,8 @@ private fun ShoppingListScreenContent(
 private fun ShoppingListTopAppBar(
     uiState: ShoppingListUiState,
     itemCallbacks: ShoppingListItemCallbacks,
-    syncCallbacks: ShoppingListSyncCallbacks
+    syncCallbacks: ShoppingListSyncCallbacks,
+    haptics: HapticVocabulary
 ) {
     TopAppBar(
         title = {
@@ -383,7 +457,8 @@ private fun ShoppingListTopAppBar(
             ShoppingListTopBarActions(
                 uiState = uiState,
                 itemCallbacks = itemCallbacks,
-                syncCallbacks = syncCallbacks
+                syncCallbacks = syncCallbacks,
+                haptics = haptics
             )
         }
     )
@@ -426,10 +501,11 @@ private fun ShoppingListNavigationIcon(
 private fun ShoppingListTopBarActions(
     uiState: ShoppingListUiState,
     itemCallbacks: ShoppingListItemCallbacks,
-    syncCallbacks: ShoppingListSyncCallbacks
+    syncCallbacks: ShoppingListSyncCallbacks,
+    haptics: HapticVocabulary
 ) {
     if (uiState.isSelectionMode) {
-        SelectionModeActions(itemCallbacks = itemCallbacks)
+        SelectionModeActions(itemCallbacks = itemCallbacks, haptics = haptics)
     } else {
         DefaultTopBarActions(
             uiState = uiState,
@@ -439,12 +515,18 @@ private fun ShoppingListTopBarActions(
 }
 
 @Composable
-private fun SelectionModeActions(itemCallbacks: ShoppingListItemCallbacks) {
+private fun SelectionModeActions(
+    itemCallbacks: ShoppingListItemCallbacks,
+    haptics: HapticVocabulary
+) {
     val purchaseSelectedLabel = stringResource(R.string.purchase_selected_items)
     val deleteSelectedLabel = stringResource(R.string.delete_selected_items)
 
     IconButton(
-        onClick = itemCallbacks.onPurchaseSelectedItems,
+        onClick = {
+            haptics.batchAction()
+            itemCallbacks.onPurchaseSelectedItems()
+        },
         modifier = Modifier
             .testTag(ShoppingListTestTags.PURCHASE_SELECTED_BUTTON)
             .semantics { contentDescription = purchaseSelectedLabel }
@@ -455,7 +537,10 @@ private fun SelectionModeActions(itemCallbacks: ShoppingListItemCallbacks) {
         )
     }
     IconButton(
-        onClick = itemCallbacks.onDeleteSelectedItems,
+        onClick = {
+            haptics.batchAction()
+            itemCallbacks.onDeleteSelectedItems()
+        },
         modifier = Modifier
             .testTag(ShoppingListTestTags.DELETE_SELECTED_BUTTON)
             .semantics { contentDescription = deleteSelectedLabel }
@@ -516,14 +601,21 @@ private fun ShoppingInputBar(
     suggestions: List<String>,
     inputCallbacks: ShoppingListInputCallbacks,
     onContentHeightChanged: (Int) -> Unit,
+    haptics: HapticVocabulary,
     modifier: Modifier = Modifier
 ) {
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
 
     fun restoreContinuousEntry() {
         focusRequester.requestFocus()
         keyboardController?.show()
+    }
+
+    fun dismissContinuousEntry() {
+        focusManager.clearFocus()
+        keyboardController?.hide()
     }
 
     Box(
@@ -543,11 +635,16 @@ private fun ShoppingInputBar(
                 value = value,
                 inputCallbacks = inputCallbacks,
                 focusRequester = focusRequester,
+                haptics = haptics,
                 onContinuousEntryRequested = ::restoreContinuousEntry
             )
             ShoppingSuggestionsList(
                 suggestions = suggestions,
-                onSuggestionSelected = { suggestion ->
+                onSuggestionTapped = { suggestion ->
+                    inputCallbacks.onSuggestionSelected(suggestion)
+                    dismissContinuousEntry()
+                },
+                onSuggestionLongPressed = { suggestion ->
                     inputCallbacks.onSuggestionSelected(suggestion)
                     restoreContinuousEntry()
                 }
@@ -561,12 +658,15 @@ private fun ShoppingInputField(
     value: String,
     inputCallbacks: ShoppingListInputCallbacks,
     focusRequester: FocusRequester,
+    haptics: HapticVocabulary,
     onContinuousEntryRequested: () -> Unit
 ) {
     val canSubmit = value.isNotBlank()
 
     fun submitAndRestoreContinuousEntry() {
+        if (!canSubmit) return
         inputCallbacks.onAddItem()
+        haptics.add()
         onContinuousEntryRequested()
     }
 
@@ -609,9 +709,14 @@ private fun ShoppingInputField(
 @Composable
 private fun ShoppingSuggestionsList(
     suggestions: List<String>,
-    onSuggestionSelected: (String) -> Unit
+    onSuggestionTapped: (String) -> Unit,
+    onSuggestionLongPressed: (String) -> Unit
 ) {
-    AnimatedVisibility(visible = suggestions.isNotEmpty()) {
+    AnimatedVisibility(
+        visible = suggestions.isNotEmpty(),
+        enter = expandVertically(expandFrom = Alignment.Bottom) + fadeIn(),
+        exit = shrinkVertically(shrinkTowards = Alignment.Bottom) + fadeOut()
+    ) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -633,7 +738,10 @@ private fun ShoppingSuggestionsList(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .defaultMinSize(minHeight = 56.dp)
-                                .clickable { onSuggestionSelected(suggestion) }
+                                .combinedClickable(
+                                    onClick = { onSuggestionTapped(suggestion) },
+                                    onLongClick = { onSuggestionLongPressed(suggestion) }
+                                )
                                 .padding(horizontal = 16.dp, vertical = 14.dp)
                                 .testTag(ShoppingListTestTags.suggestionItem(suggestion))
                         )
@@ -650,12 +758,14 @@ private fun ShoppingItemsContent(
     uiState: ShoppingListUiState,
     itemCallbacks: ShoppingListItemCallbacks,
     modifier: Modifier = Modifier,
-    iconResolver: IconResolver,
-    bottomContentPadding: Dp
+    bottomContentPadding: Dp,
+    dependencies: ShoppingListContentDependencies
 ) {
     val swipeResetTrigger = uiState.deleteUndoSnackbar?.count?.toString().orEmpty()
-    val emptyPendingTitle = stringResource(R.string.empty_pending_title)
-    val emptyPurchasedTitle = stringResource(R.string.empty_purchased_title)
+    val emptyPendingHelper = stringResource(R.string.empty_pending_helper)
+    val emptyPurchasedHelper = stringResource(R.string.empty_purchased_helper)
+    var animatedPurchaseIds by remember { mutableStateOf(emptySet<String>()) }
+    var purchasingItems by remember { mutableStateOf(emptyMap<String, ShoppingItem>()) }
     var userPurchasedSectionExpanded by rememberSaveable { mutableStateOf<Boolean?>(null) }
     val purchasedSectionVisibility = PurchasedSectionState.resolve(
         pendingCount = uiState.pendingItems.size,
@@ -682,12 +792,20 @@ private fun ShoppingItemsContent(
         }
 
         pendingItemsSection(
-            pendingItems = uiState.pendingItems,
-            selectedIds = uiState.selectedIds,
+            state = PendingItemsSectionState(
+                items = uiState.pendingItems,
+                selectedIds = uiState.selectedIds,
+                isSelectionMode = uiState.isSelectionMode,
+                purchasingItems = purchasingItems,
+                emptyText = emptyPendingHelper
+            ),
             swipeResetTrigger = swipeResetTrigger,
             itemCallbacks = itemCallbacks,
-            emptyPendingTitle = emptyPendingTitle,
-            iconResolver = iconResolver
+            dependencies = dependencies,
+            animationCallbacks = PendingPurchaseAnimationCallbacks(
+                onStarted = { item -> purchasingItems += item.id to item; animatedPurchaseIds += item.id },
+                onFinished = { itemId -> purchasingItems -= itemId; animatedPurchaseIds -= itemId }
+            )
         )
 
         item(key = ShoppingListTestTags.SECTION_DIVIDER) {
@@ -710,11 +828,15 @@ private fun ShoppingItemsContent(
 
         if (isPurchasedSectionExpanded) {
             purchasedItemsSection(
-                purchasedItems = uiState.purchasedItems,
+                state = PurchasedItemsSectionState(
+                    items = uiState.purchasedItems,
+                    animatedPurchaseIds = animatedPurchaseIds
+                ),
                 swipeResetTrigger = swipeResetTrigger,
                 itemCallbacks = itemCallbacks,
-                emptyPurchasedTitle = emptyPurchasedTitle,
-                iconResolver = iconResolver
+                emptyPurchasedText = emptyPurchasedHelper,
+                dependencies = dependencies,
+                onPurchaseAnimationFinished = { itemId -> animatedPurchaseIds = animatedPurchaseIds - itemId }
             )
         }
     }
@@ -723,17 +845,21 @@ private fun ShoppingItemsContent(
 private fun sectionTitle(title: String, count: Int): String = "$title \u00b7 $count"
 
 private fun androidx.compose.foundation.lazy.LazyListScope.pendingItemsSection(
-    pendingItems: List<ShoppingItem>,
-    selectedIds: Set<String>,
+    state: PendingItemsSectionState,
     swipeResetTrigger: String,
     itemCallbacks: ShoppingListItemCallbacks,
-    emptyPendingTitle: String,
-    iconResolver: IconResolver
+    dependencies: ShoppingListContentDependencies,
+    animationCallbacks: PendingPurchaseAnimationCallbacks
 ) {
-    if (pendingItems.isEmpty()) {
+    val purchasingItems = state.purchasingItems.values.filterNot { purchasingItem ->
+        state.items.any { item -> item.id == purchasingItem.id }
+    }
+    if (state.items.isEmpty() && purchasingItems.isEmpty()) {
         item(key = ShoppingListTestTags.EMPTY_STATE) {
-            EmptyStateCard(
-                title = emptyPendingTitle,
+            EmptyState(
+                text = state.emptyText,
+                iconTag = ShoppingListTestTags.EMPTY_PENDING_ICON,
+                textTag = ShoppingListTestTags.EMPTY_PENDING_TEXT,
                 modifier = Modifier.testTag(ShoppingListTestTags.EMPTY_STATE)
             )
         }
@@ -741,50 +867,91 @@ private fun androidx.compose.foundation.lazy.LazyListScope.pendingItemsSection(
     }
 
     items(
-        items = pendingItems,
+        items = purchasingItems,
+        key = { item -> "purchasing_${item.id}" }
+    ) { item ->
+        PendingItemRow(
+            state = PendingItemRowState(
+                item = item,
+                isSelected = false,
+                isSelectionMode = false,
+                animatePurchaseStrikethrough = true
+            ),
+            callbacks = PendingItemRowCallbacks(
+                onClick = {},
+                onLongClick = {},
+                onMarkPurchased = {},
+                onDeleteRequested = {}
+            ),
+            onPurchaseAnimationStarted = {},
+            onPurchaseAnimationFinished = { animationCallbacks.onFinished(item.id) },
+            swipeResetTrigger = swipeResetTrigger,
+            dependencies = dependencies,
+            modifier = Modifier.animateItem()
+        )
+    }
+
+    items(
+        items = state.items,
         key = { item -> item.id }
     ) { item ->
         PendingItemRow(
-            item = item,
-            isSelected = item.id in selectedIds,
+            state = PendingItemRowState(
+                item = item,
+                isSelected = item.id in state.selectedIds,
+                isSelectionMode = state.isSelectionMode
+            ),
             callbacks = PendingItemRowCallbacks(
                 onClick = { itemCallbacks.onPendingItemClick(item.id) },
                 onLongClick = { itemCallbacks.onPendingItemLongPress(item.id) },
+                onMarkPurchased = {
+                    dependencies.haptics.purchaseTap()
+                    itemCallbacks.onPendingItemMarkPurchased(item.id)
+                },
                 onDeleteRequested = { itemCallbacks.onDeleteItemRequested(item) }
             ),
+            onPurchaseAnimationStarted = { animationCallbacks.onStarted(item) },
+            onPurchaseAnimationFinished = {},
             swipeResetTrigger = swipeResetTrigger,
-            iconResolver = iconResolver,
+            dependencies = dependencies,
             modifier = Modifier.animateItem()
         )
     }
 }
 
 private fun androidx.compose.foundation.lazy.LazyListScope.purchasedItemsSection(
-    purchasedItems: List<ShoppingItem>,
+    state: PurchasedItemsSectionState,
     swipeResetTrigger: String,
     itemCallbacks: ShoppingListItemCallbacks,
-    emptyPurchasedTitle: String,
-    iconResolver: IconResolver
+    emptyPurchasedText: String,
+    dependencies: ShoppingListContentDependencies,
+    onPurchaseAnimationFinished: (String) -> Unit
 ) {
-    if (purchasedItems.isEmpty()) {
+    if (state.items.isEmpty()) {
         item(key = "purchased_empty") {
-            EmptyStateCard(
-                title = emptyPurchasedTitle
+            EmptyState(
+                text = emptyPurchasedText,
+                iconTag = ShoppingListTestTags.EMPTY_PURCHASED_ICON,
+                textTag = ShoppingListTestTags.EMPTY_PURCHASED_TEXT
             )
         }
         return
     }
 
     items(
-        items = purchasedItems,
+        items = state.items,
         key = { item -> item.id }
     ) { item ->
         PurchasedItemRow(
-            item = item,
+            state = PurchasedItemRowState(
+                item = item,
+                animatePurchaseStrikethrough = item.id in state.animatedPurchaseIds
+            ),
             onClick = { itemCallbacks.onPurchasedItemClick(item.id) },
             onDeleteRequested = { itemCallbacks.onDeleteItemRequested(item) },
             swipeResetTrigger = swipeResetTrigger,
-            iconResolver = iconResolver,
+            dependencies = dependencies,
+            onPurchaseAnimationFinished = { onPurchaseAnimationFinished(item.id) },
             modifier = Modifier.animateItem()
         )
     }
@@ -804,34 +971,49 @@ private fun SectionHeader(
 }
 
 @Composable
-private fun EmptyStateCard(
-    title: String,
+private fun EmptyState(
+    text: String,
+    iconTag: String,
+    textTag: String,
     modifier: Modifier = Modifier
 ) {
-    Box(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(shoppingListWideSurfaceShape)
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .padding(20.dp)
+            .padding(vertical = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        Icon(
+            imageVector = Icons.Rounded.ShoppingBag,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .size(48.dp)
+                .alpha(EMPTY_STATE_ICON_ALPHA)
+                .testTag(iconTag)
+        )
         Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Medium
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.testTag(textTag)
         )
     }
 }
 
 @Composable
 private fun PendingItemRow(
-    item: ShoppingItem,
-    isSelected: Boolean,
+    state: PendingItemRowState,
     callbacks: PendingItemRowCallbacks,
+    onPurchaseAnimationStarted: () -> Unit,
+    onPurchaseAnimationFinished: () -> Unit,
     swipeResetTrigger: String,
-    iconResolver: IconResolver,
+    dependencies: ShoppingListContentDependencies,
     modifier: Modifier = Modifier
 ) {
+    val item = state.item
+    val isSelected = state.isSelected
     val colorRoles = pendingItemRowColorRoles(isSelected)
     val containerColor by animateColorAsState(
         targetValue = colorRoles.container.resolve(),
@@ -844,45 +1026,91 @@ private fun PendingItemRow(
         label = "pendingRowContentColor"
     )
 
+    val iconResolver = dependencies.iconResolver
+    val haptics = dependencies.haptics
     val iconVersion = iconResolver.version
     val leadingIcon = remember(item.name, iconVersion) {
         iconResolver.resolveIcon(item.name)
     }
+    val pendingState = stringResource(R.string.shopping_item_state_pending)
+    val selectedState = stringResource(R.string.shopping_item_state_selected)
+    val markPurchasedLabel = stringResource(R.string.shopping_item_action_mark_purchased)
+    val deleteLabel = stringResource(R.string.shopping_item_action_delete)
 
     ShoppingItemRow(
         name = item.name,
         visuals = ShoppingItemRowVisuals(
             leadingIcon = leadingIcon,
             containerColor = containerColor,
-            contentColor = contentColor
+            contentColor = contentColor,
+            showStrikethrough = state.animatePurchaseStrikethrough
         ),
         interactions = ShoppingItemRowInteractions(
-            onClick = callbacks.onClick,
-            onLongClick = callbacks.onLongClick,
+            onClick = {
+                if (!state.isSelectionMode) {
+                    haptics.purchaseTap()
+                    onPurchaseAnimationStarted()
+                }
+                callbacks.onClick()
+            },
+            onLongClick = {
+                haptics.multiSelectEntry()
+                callbacks.onLongClick()
+            },
             onDeleteRequested = callbacks.onDeleteRequested,
+            onSwipeThresholdCrossed = haptics::swipeThreshold,
             swipeTag = ShoppingListTestTags.swipePendingItem(item.id),
             swipeResetTrigger = swipeResetTrigger
         ),
+        animateStrikethroughFromStart = state.animatePurchaseStrikethrough,
+        onStrikethroughAnimationFinished = onPurchaseAnimationFinished,
         modifier = modifier
             .fillMaxWidth()
-            .semantics { contentDescription = item.name }
+            .semantics {
+                contentDescription = item.name
+                stateDescription = if (isSelected) selectedState else pendingState
+                customActions = listOf(
+                    CustomAccessibilityAction(markPurchasedLabel) {
+                        onPurchaseAnimationStarted()
+                        callbacks.onMarkPurchased()
+                        true
+                    },
+                    CustomAccessibilityAction(deleteLabel) {
+                        callbacks.onDeleteRequested()
+                        true
+                    }
+                )
+                if (state.isSelectionMode) {
+                    role = Role.Checkbox
+                    toggleableState = if (isSelected) ToggleableState.On else ToggleableState.Off
+                }
+            }
             .testTag(ShoppingListTestTags.pendingItem(item.id))
     )
 }
 
 @Composable
 private fun PurchasedItemRow(
-    item: ShoppingItem,
+    state: PurchasedItemRowState,
     onClick: () -> Unit,
     onDeleteRequested: () -> Unit,
     swipeResetTrigger: String,
-    iconResolver: IconResolver,
+    dependencies: ShoppingListContentDependencies,
+    onPurchaseAnimationFinished: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val item = state.item
+    val iconResolver = dependencies.iconResolver
+    val haptics = dependencies.haptics
+    var isRestoring by remember(item.id) { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
     val iconVersion = iconResolver.version
     val leadingIcon = remember(item.name, iconVersion) {
         iconResolver.resolveIcon(item.name)
     }
+    val purchasedState = stringResource(R.string.shopping_item_state_purchased)
+    val restoreLabel = stringResource(R.string.shopping_item_action_restore_pending)
+    val deleteLabel = stringResource(R.string.shopping_item_action_delete)
 
     ShoppingItemRow(
         name = item.name,
@@ -890,18 +1118,46 @@ private fun PurchasedItemRow(
             leadingIcon = leadingIcon,
             containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             contentColor = MaterialTheme.colorScheme.onSurface,
-            textDecoration = TextDecoration.LineThrough,
+            showStrikethrough = !isRestoring,
             rowAlpha = 0.6f
         ),
         interactions = ShoppingItemRowInteractions(
-            onClick = onClick,
+            onClick = {
+                haptics.restore()
+                isRestoring = true
+                coroutineScope.launch {
+                    delay(STRIKETHROUGH_ANIMATION_MILLIS.toLong())
+                    onClick()
+                }
+            },
             onDeleteRequested = onDeleteRequested,
+            onSwipeThresholdCrossed = haptics::swipeThreshold,
             swipeTag = ShoppingListTestTags.swipePurchasedItem(item.id),
             swipeResetTrigger = swipeResetTrigger
         ),
+        animateStrikethroughFromStart = state.animatePurchaseStrikethrough,
+        onStrikethroughAnimationFinished = onPurchaseAnimationFinished,
         modifier = modifier
             .fillMaxWidth()
-            .semantics { contentDescription = item.name }
+            .semantics {
+                contentDescription = item.name
+                stateDescription = purchasedState
+                customActions = listOf(
+                    CustomAccessibilityAction(restoreLabel) {
+                        haptics.restore()
+                        isRestoring = true
+                        coroutineScope.launch {
+                            delay(STRIKETHROUGH_ANIMATION_MILLIS.toLong())
+                            onClick()
+                        }
+                        true
+                    },
+                    CustomAccessibilityAction(deleteLabel) {
+                        onDeleteRequested()
+                        true
+                    }
+                )
+            }
             .testTag(ShoppingListTestTags.purchasedItem(item.id))
     )
 }
@@ -912,13 +1168,30 @@ private fun ShoppingItemRow(
     visuals: ShoppingItemRowVisuals,
     interactions: ShoppingItemRowInteractions,
     modifier: Modifier = Modifier,
+    animateStrikethroughFromStart: Boolean = false,
+    onStrikethroughAnimationFinished: () -> Unit = {},
 ) {
     val dismissState = rememberSwipeToDismissBoxState()
+    var didFireSwipeThresholdHaptic by remember { mutableStateOf(false) }
 
     LaunchedEffect(dismissState.currentValue) {
         if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
             interactions.onDeleteRequested()
             dismissState.reset()
+        }
+    }
+
+    LaunchedEffect(dismissState.targetValue) {
+        if (
+            dismissState.currentValue == SwipeToDismissBoxValue.Settled &&
+            dismissState.targetValue == SwipeToDismissBoxValue.EndToStart &&
+            !didFireSwipeThresholdHaptic
+        ) {
+            interactions.onSwipeThresholdCrossed()
+            didFireSwipeThresholdHaptic = true
+        }
+        if (dismissState.targetValue == SwipeToDismissBoxValue.Settled) {
+            didFireSwipeThresholdHaptic = false
         }
     }
 
@@ -964,17 +1237,57 @@ private fun ShoppingItemRow(
                     .testTag(ShoppingListTestTags.ITEM_ICON)
             )
             Spacer(modifier = Modifier.width(12.dp))
-            Text(
+            AnimatedStrikethroughText(
                 text = name,
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
                 color = visuals.contentColor,
-                textDecoration = visuals.textDecoration,
+                isStrikethroughVisible = visuals.showStrikethrough,
+                animateFromStart = animateStrikethroughFromStart,
+                onAnimationFinished = onStrikethroughAnimationFinished,
                 modifier = Modifier
                     .weight(1f)
                     .padding(vertical = 12.dp)
             )
+        }
+    }
+}
+
+@Composable
+private fun AnimatedStrikethroughText(
+    text: String,
+    color: androidx.compose.ui.graphics.Color,
+    isStrikethroughVisible: Boolean,
+    animateFromStart: Boolean,
+    onAnimationFinished: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val progress = remember { Animatable(if (isStrikethroughVisible && !animateFromStart) 1f else 0f) }
+    LaunchedEffect(isStrikethroughVisible) {
+        progress.animateTo(
+            targetValue = if (isStrikethroughVisible) 1f else 0f,
+            animationSpec = tween(durationMillis = STRIKETHROUGH_ANIMATION_MILLIS)
+        )
+        onAnimationFinished()
+    }
+
+    Box(modifier = modifier) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = color,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            if (progress.value > 0f) {
+                val y = size.height * STRIKETHROUGH_CENTER_Y_FRACTION
+                drawLine(
+                    color = color,
+                    start = Offset(0f, y),
+                    end = Offset(size.width * progress.value, y),
+                    strokeWidth = 2.dp.toPx()
+                )
+            }
         }
     }
 }

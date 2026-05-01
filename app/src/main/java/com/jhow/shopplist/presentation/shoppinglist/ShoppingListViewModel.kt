@@ -194,6 +194,14 @@ class ShoppingListViewModel @Inject constructor(
             return
         }
 
+        markPendingItemPurchased(id)
+    }
+
+    fun onPendingItemMarkPurchased(id: String) {
+        markPendingItemPurchased(id)
+    }
+
+    private fun markPendingItemPurchased(id: String) {
         viewModelScope.launch {
             markSelectedItemsPurchasedUseCase(setOf(id))
             requestSync()
