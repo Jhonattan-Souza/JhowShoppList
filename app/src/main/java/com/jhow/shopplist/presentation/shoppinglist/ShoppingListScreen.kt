@@ -40,7 +40,6 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.ShoppingBag
 import androidx.compose.material.icons.rounded.Sync
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -51,7 +50,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
@@ -74,6 +74,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -106,8 +107,7 @@ class ShoppingListItemCallbacks(
     val onDeleteSelectedItems: () -> Unit = {},
     val onSelectionModeExited: () -> Unit = {},
     val onDeleteItemRequested: (ShoppingItem) -> Unit = {},
-    val onDeleteItemDismissed: () -> Unit = {},
-    val onDeleteItemConfirmed: () -> Unit = {}
+    val onDeleteUndoRequested: () -> Unit = {}
 )
 
 class ShoppingListSyncCallbacks(
@@ -208,8 +208,7 @@ fun ShoppingListRoute(
             onDeleteSelectedItems = viewModel::onDeleteSelectedItems,
             onSelectionModeExited = viewModel::onSelectionModeExited,
             onDeleteItemRequested = viewModel::onDeleteItemRequested,
-            onDeleteItemDismissed = viewModel::onDeleteItemDismissed,
-            onDeleteItemConfirmed = viewModel::onDeleteItemConfirmed
+            onDeleteUndoRequested = viewModel::onDeleteUndoRequested
         )
     }
     val syncCallbacks = remember(viewModel) {
@@ -246,6 +245,11 @@ fun ShoppingListScreen(
     LaunchedEffect(Unit) {
         focusManager.clearFocus(force = true)
     }
+    DeleteUndoSnackbarEffect(
+        snackbarState = uiState.deleteUndoSnackbar,
+        snackbarHostState = snackbarHostState,
+        onUndo = itemCallbacks.onDeleteUndoRequested
+    )
 
     Scaffold(
         modifier = modifier
@@ -287,6 +291,40 @@ fun ShoppingListScreen(
     }
 }
 
+@Composable
+private fun DeleteUndoSnackbarEffect(
+    snackbarState: DeleteUndoSnackbarState?,
+    snackbarHostState: SnackbarHostState,
+    onUndo: () -> Unit
+) {
+    val message = when {
+        snackbarState == null -> ""
+        snackbarState.count == 1 -> stringResource(R.string.delete_item_snackbar_single)
+        else -> pluralStringResource(
+            R.plurals.delete_item_snackbar_multiple,
+            snackbarState.count,
+            snackbarState.count
+        )
+    }
+    val undoLabel = stringResource(R.string.delete_item_undo)
+
+    LaunchedEffect(snackbarState) {
+        if (snackbarState == null) {
+            snackbarHostState.currentSnackbarData?.dismiss()
+            return@LaunchedEffect
+        }
+
+        val result = snackbarHostState.showSnackbar(
+            message = message,
+            actionLabel = undoLabel,
+            duration = SnackbarDuration.Indefinite
+        )
+        if (result == SnackbarResult.ActionPerformed) {
+            onUndo()
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ShoppingListScreenContent(
@@ -318,11 +356,6 @@ private fun ShoppingListScreenContent(
         )
     }
 
-    DeleteItemDialog(
-        item = uiState.itemPendingDeletion,
-        onDismiss = itemCallbacks.onDeleteItemDismissed,
-        onConfirm = itemCallbacks.onDeleteItemConfirmed
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -618,7 +651,7 @@ private fun ShoppingItemsContent(
     iconResolver: IconResolver,
     bottomContentPadding: Dp
 ) {
-    val swipeResetTrigger = uiState.itemPendingDeletion?.id.orEmpty()
+    val swipeResetTrigger = uiState.deleteUndoSnackbar?.count?.toString().orEmpty()
     val emptyPendingTitle = stringResource(R.string.empty_pending_title)
     val emptyPurchasedTitle = stringResource(R.string.empty_purchased_title)
 
@@ -732,32 +765,6 @@ private fun androidx.compose.foundation.lazy.LazyListScope.purchasedItemsSection
             modifier = Modifier.animateItem()
         )
     }
-}
-
-@Composable
-private fun DeleteItemDialog(
-    item: ShoppingItem?,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit
-) {
-    if (item == null) return
-
-    AlertDialog(
-        modifier = Modifier.testTag(ShoppingListTestTags.DELETE_ITEM_DIALOG),
-        onDismissRequest = onDismiss,
-        title = { Text(text = stringResource(R.string.delete_item_title)) },
-        text = { Text(text = stringResource(R.string.delete_item_message, item.name)) },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(text = stringResource(R.string.delete_item_confirm))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(text = stringResource(R.string.delete_item_cancel))
-            }
-        }
-    )
 }
 
 @Composable

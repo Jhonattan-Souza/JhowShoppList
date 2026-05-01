@@ -13,12 +13,15 @@ import com.jhow.shopplist.domain.usecase.ObservePendingItemsUseCase
 import com.jhow.shopplist.domain.usecase.ObservePurchasedItemsUseCase
 import com.jhow.shopplist.domain.usecase.ObserveSyncStateUseCase
 import com.jhow.shopplist.domain.usecase.RequestShoppingSyncUseCase
+import com.jhow.shopplist.domain.usecase.RestoreDeletedShoppingItemUseCase
 import com.jhow.shopplist.testing.FakeCalDavConfigRepository
 import com.jhow.shopplist.testing.FakeShoppingListRepository
 import com.jhow.shopplist.testing.FakeShoppingSyncScheduler
 import com.jhow.shopplist.testing.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -50,6 +53,7 @@ class ShoppingListViewModelTest {
             observeItemNamesUseCase = ObserveItemNamesUseCase(repository),
             addOrReclaimShoppingItemUseCase = AddOrReclaimShoppingItemUseCase(repository),
             deleteShoppingItemUseCase = DeleteShoppingItemUseCase(repository),
+            restoreDeletedShoppingItemUseCase = RestoreDeletedShoppingItemUseCase(repository),
             markSelectedItemsPurchasedUseCase = MarkSelectedItemsPurchasedUseCase(repository),
             markPurchasedItemPendingUseCase = MarkPurchasedItemPendingUseCase(repository),
             requestShoppingSyncUseCase = RequestShoppingSyncUseCase(syncScheduler),
@@ -378,26 +382,41 @@ class ShoppingListViewModelTest {
         advanceUntilIdle()
 
         viewModel.onDeleteItemRequested(samplePendingItem(id = "tomatoes"))
-        advanceUntilIdle()
-        assertEquals("tomatoes", viewModel.uiState.value.itemPendingDeletion?.id)
-
-        viewModel.onDeleteItemConfirmed()
-        advanceUntilIdle()
+        runCurrent()
 
         assertEquals(listOf("tomatoes"), repository.deletedRequests)
-        assertEquals(null, viewModel.uiState.value.itemPendingDeletion)
+        assertEquals(DeleteUndoSnackbarState(count = 1), viewModel.uiState.value.deleteUndoSnackbar)
+        assertEquals(0, syncScheduler.requestCount)
+    }
+
+    @Test
+    fun `delete timeout commits deletion and requests sync`() = runTest {
+        repository.seedItems(listOf(samplePendingItem(id = "tomatoes")))
+        advanceUntilIdle()
+
+        viewModel.onDeleteItemRequested(samplePendingItem(id = "tomatoes"))
+        runCurrent()
+        advanceTimeBy(4_000)
+        runCurrent()
+
+        assertEquals(null, viewModel.uiState.value.deleteUndoSnackbar)
         assertEquals(1, syncScheduler.requestCount)
     }
 
     @Test
-    fun `delete dismissal clears pending deletion item`() = runTest {
+    fun `delete undo restores item without requesting sync`() = runTest {
         repository.seedItems(listOf(samplePurchasedItem(id = "olive-oil")))
         advanceUntilIdle()
 
         viewModel.onDeleteItemRequested(samplePurchasedItem(id = "olive-oil"))
-        viewModel.onDeleteItemDismissed()
+        runCurrent()
 
-        assertEquals(null, viewModel.uiState.value.itemPendingDeletion)
+        viewModel.onDeleteUndoRequested()
+        runCurrent()
+
+        assertEquals(listOf("olive-oil"), repository.restoredRequests)
+        assertEquals(null, viewModel.uiState.value.deleteUndoSnackbar)
+        assertEquals(0, syncScheduler.requestCount)
     }
 
     @Test

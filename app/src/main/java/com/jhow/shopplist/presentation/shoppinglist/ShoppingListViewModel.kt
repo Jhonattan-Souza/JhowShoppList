@@ -14,8 +14,10 @@ import com.jhow.shopplist.domain.usecase.ObservePendingItemsUseCase
 import com.jhow.shopplist.domain.usecase.ObservePurchasedItemsUseCase
 import com.jhow.shopplist.domain.usecase.ObserveSyncStateUseCase
 import com.jhow.shopplist.domain.usecase.RequestShoppingSyncUseCase
+import com.jhow.shopplist.domain.usecase.RestoreDeletedShoppingItemUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -36,7 +38,7 @@ private data class ShoppingListIntermediateState(
     val currentSuggestions: List<String>,
     val selectedIds: Set<String>,
     val isSelectionMode: Boolean,
-    val itemPendingDeletion: ShoppingItem?
+    val deleteUndoSnackbar: DeleteUndoSnackbarState?
 )
 
 @HiltViewModel
@@ -47,6 +49,7 @@ class ShoppingListViewModel @Inject constructor(
     observeItemNamesUseCase: ObserveItemNamesUseCase,
     private val addOrReclaimShoppingItemUseCase: AddOrReclaimShoppingItemUseCase,
     private val deleteShoppingItemUseCase: DeleteShoppingItemUseCase,
+    private val restoreDeletedShoppingItemUseCase: RestoreDeletedShoppingItemUseCase,
     private val markSelectedItemsPurchasedUseCase: MarkSelectedItemsPurchasedUseCase,
     private val markPurchasedItemPendingUseCase: MarkPurchasedItemPendingUseCase,
     private val requestShoppingSyncUseCase: RequestShoppingSyncUseCase,
@@ -55,7 +58,23 @@ class ShoppingListViewModel @Inject constructor(
     private val selectionController: SelectionController
 ) : ViewModel() {
     private val inputValue = MutableStateFlow("")
-    private val itemPendingDeletion = MutableStateFlow<ShoppingItem?>(null)
+    private val undoCoordinator = UndoCoordinator(
+        timeoutMillis = DELETE_UNDO_TIMEOUT_MILLIS,
+        scope = viewModelScope,
+        dispatcher = Dispatchers.Main.immediate,
+        onOptimisticDelete = { item ->
+            deleteShoppingItemUseCase(item.id)
+            if (item.id in selectionController.selected.value) {
+                selectionController.toggle(item.id)
+            }
+        },
+        onRestore = { item ->
+            restoreDeletedShoppingItemUseCase(item)
+        },
+        onCommit = {
+            requestSync()
+        }
+    )
     private val inputWithSuggestions = combine(observeItemNamesUseCase(), inputValue) { allItemNames, currentInput ->
         currentInput to buildSuggestions(allItemNames = allItemNames, currentInput = currentInput)
     }
@@ -64,14 +83,14 @@ class ShoppingListViewModel @Inject constructor(
         inputWithSuggestions,
         selectionController.selected,
         selectionController.isActive,
-        itemPendingDeletion
-    ) { inputSuggestions, selectedIds, isSelectionMode, pendingDeletion ->
+        undoCoordinator.snackbarState
+    ) { inputSuggestions, selectedIds, isSelectionMode, deleteUndoSnackbar ->
         ViewSignals(
             currentInput = inputSuggestions.first,
             currentSuggestions = inputSuggestions.second,
             selectedIds = selectedIds,
             isSelectionMode = isSelectionMode,
-            itemPendingDeletion = pendingDeletion
+            deleteUndoSnackbar = deleteUndoSnackbar
         )
     }
 
@@ -87,7 +106,7 @@ class ShoppingListViewModel @Inject constructor(
             currentSuggestions = signals.currentSuggestions,
             selectedIds = signals.selectedIds,
             isSelectionMode = signals.isSelectionMode,
-            itemPendingDeletion = signals.itemPendingDeletion
+            deleteUndoSnackbar = signals.deleteUndoSnackbar
         )
     }
 
@@ -125,7 +144,6 @@ class ShoppingListViewModel @Inject constructor(
         .combine(isSyncConfigured) { (intermediate, syncing, latch), configured ->
             val pendingIds = intermediate.pendingItems.mapTo(linkedSetOf()) { it.id }
             val distinctPurchasedItems = intermediate.purchasedItems.filterNot { it.id in pendingIds }
-            val visibleItems = intermediate.pendingItems + distinctPurchasedItems
             val visibleSelectedIds = intermediate.selectedIds.intersect(pendingIds)
 
             if (visibleSelectedIds != intermediate.selectedIds) {
@@ -139,7 +157,7 @@ class ShoppingListViewModel @Inject constructor(
                 purchasedItems = distinctPurchasedItems,
                 selectedIds = visibleSelectedIds,
                 isSelectionMode = intermediate.isSelectionMode && visibleSelectedIds.isNotEmpty(),
-                itemPendingDeletion = visibleItems.firstOrNull { it.id == intermediate.itemPendingDeletion?.id },
+                deleteUndoSnackbar = intermediate.deleteUndoSnackbar,
                 isManualSync = syncing && latch,
                 isBackgroundSync = syncing && !latch,
                 isSyncConfigured = configured
@@ -225,24 +243,11 @@ class ShoppingListViewModel @Inject constructor(
     }
 
     fun onDeleteItemRequested(item: ShoppingItem) {
-        itemPendingDeletion.value = item
+        undoCoordinator.onDelete(item)
     }
 
-    fun onDeleteItemDismissed() {
-        itemPendingDeletion.value = null
-    }
-
-    fun onDeleteItemConfirmed() {
-        val item = itemPendingDeletion.value ?: return
-
-        viewModelScope.launch {
-            deleteShoppingItemUseCase(item.id)
-            if (item.id in selectionController.selected.value) {
-                selectionController.toggle(item.id)
-            }
-            itemPendingDeletion.value = null
-            requestSync()
-        }
+    fun onDeleteUndoRequested() {
+        undoCoordinator.onUndo()
     }
 
     fun onManualSyncRequested() {
@@ -262,6 +267,7 @@ class ShoppingListViewModel @Inject constructor(
     private companion object {
         const val MIN_SUGGESTION_QUERY_LENGTH = 2
         const val MAX_SUGGESTION_COUNT = 5
+        const val DELETE_UNDO_TIMEOUT_MILLIS = 4_000L
 
         fun buildSuggestions(allItemNames: List<String>, currentInput: String): List<String> {
             val normalizedInput = ShoppingSearch.normalize(currentInput)
@@ -301,6 +307,6 @@ class ShoppingListViewModel @Inject constructor(
         val currentSuggestions: List<String>,
         val selectedIds: Set<String>,
         val isSelectionMode: Boolean,
-        val itemPendingDeletion: ShoppingItem?
+        val deleteUndoSnackbar: DeleteUndoSnackbarState?
     )
 }

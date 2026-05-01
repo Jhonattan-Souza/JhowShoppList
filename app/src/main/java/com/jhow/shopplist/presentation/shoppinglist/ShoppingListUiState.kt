@@ -11,7 +11,7 @@ data class ShoppingListUiState(
     val purchasedItems: List<ShoppingItem> = emptyList(),
     val selectedIds: Set<String> = emptySet(),
     val isSelectionMode: Boolean = false,
-    val itemPendingDeletion: ShoppingItem? = null,
+    val deleteUndoSnackbar: DeleteUndoSnackbarState? = null,
     val isManualSync: Boolean = false,
     val isBackgroundSync: Boolean = false,
     val isSyncConfigured: Boolean = false
