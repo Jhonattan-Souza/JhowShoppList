@@ -1,6 +1,7 @@
 package com.jhow.shopplist.presentation.shoppinglist
 
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -33,5 +34,10 @@ class ShoppingListScreenVisualsTest {
             RoundedCornerShape(percent = 50),
             shoppingListWideSurfaceShape
         )
+    }
+
+    @Test
+    fun `list bottom padding follows measured composer height`() {
+        assertEquals(148.dp, shoppingListBottomContentPadding(inputBarHeight = 148.dp))
     }
 }
