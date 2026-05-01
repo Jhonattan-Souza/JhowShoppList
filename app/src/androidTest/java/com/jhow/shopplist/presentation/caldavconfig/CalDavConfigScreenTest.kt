@@ -2,10 +2,13 @@ package com.jhow.shopplist.presentation.caldavconfig
 
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.compose.runtime.getValue
@@ -97,6 +100,58 @@ class CalDavConfigScreenTest {
 
         composeRule.onNodeWithTag(CalDavConfigTestTags.SAVE_BUTTON).performClick()
         assertTrue(saveClicked)
+    }
+
+    @Test
+    fun imeActions_moveFocusThroughFieldsAndSubmitOnDone() {
+        var saveClicked = false
+
+        composeRule.setContent {
+            CalDavConfigScreen(
+                uiState = CalDavConfigUiState(isLoading = false),
+                callbacks = CalDavConfigCallbacks(
+                    onSaveClicked = { saveClicked = true }
+                )
+            )
+        }
+
+        composeRule.onNodeWithTag(CalDavConfigTestTags.SERVER_FIELD).performClick()
+        composeRule.onNodeWithTag(CalDavConfigTestTags.SERVER_FIELD).assertIsFocused()
+        composeRule.onNodeWithTag(CalDavConfigTestTags.SERVER_FIELD).performImeAction()
+        composeRule.onNodeWithTag(CalDavConfigTestTags.USERNAME_FIELD).assertIsFocused()
+
+        composeRule.onNodeWithTag(CalDavConfigTestTags.USERNAME_FIELD).performImeAction()
+        composeRule.onNodeWithTag(CalDavConfigTestTags.PASSWORD_FIELD).assertIsFocused()
+
+        composeRule.onNodeWithTag(CalDavConfigTestTags.PASSWORD_FIELD).performImeAction()
+        composeRule.onNodeWithTag(CalDavConfigTestTags.LIST_NAME_FIELD).assertIsFocused()
+
+        composeRule.onNodeWithTag(CalDavConfigTestTags.LIST_NAME_FIELD).performImeAction()
+
+        assertTrue(saveClicked)
+    }
+
+    @Test
+    fun passwordVisibilityToggle_switchesBetweenShowAndHideStates() {
+        composeRule.setContent {
+            var state by remember { mutableStateOf(CalDavConfigUiState(isLoading = false)) }
+
+            CalDavConfigScreen(
+                uiState = state,
+                callbacks = CalDavConfigCallbacks(
+                    onPasswordChanged = {
+                        state = state.copy(password = it)
+                    }
+                )
+            )
+        }
+
+        composeRule.onNodeWithTag(CalDavConfigTestTags.PASSWORD_FIELD).performTextInput("secret")
+        composeRule.onNodeWithContentDescription("Show password").assertIsDisplayed()
+
+        composeRule.onNodeWithTag(CalDavConfigTestTags.PASSWORD_VISIBILITY_TOGGLE).performClick()
+
+        composeRule.onNodeWithContentDescription("Hide password").assertIsDisplayed()
     }
 
     @Test

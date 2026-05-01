@@ -11,14 +11,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,13 +37,20 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -149,6 +160,7 @@ private fun CalDavConfigFormContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -214,6 +226,8 @@ private fun CalDavConfigFields(
     callbacks: CalDavConfigCallbacks
 ) {
     val fieldsEnabled = !uiState.isSaving && !uiState.isLoading
+    val focusManager = LocalFocusManager.current
+    var isPasswordVisible by rememberSaveable { mutableStateOf(false) }
 
     OutlinedTextField(
         value = uiState.serverUrl,
@@ -223,6 +237,13 @@ private fun CalDavConfigFields(
             .fillMaxWidth()
             .testTag(CalDavConfigTestTags.SERVER_FIELD),
         singleLine = true,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Uri,
+            imeAction = ImeAction.Next
+        ),
+        keyboardActions = KeyboardActions(
+            onNext = { focusManager.moveFocus(FocusDirection.Next) }
+        ),
         enabled = fieldsEnabled
     )
 
@@ -234,25 +255,19 @@ private fun CalDavConfigFields(
             .fillMaxWidth()
             .testTag(CalDavConfigTestTags.USERNAME_FIELD),
         singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+        keyboardActions = KeyboardActions(
+            onNext = { focusManager.moveFocus(FocusDirection.Next) }
+        ),
         enabled = fieldsEnabled
     )
 
-    OutlinedTextField(
-        value = uiState.password,
+    PasswordField(
+        uiState = uiState,
         onValueChange = callbacks.onPasswordChanged,
-        label = { Text(stringResource(R.string.sync_password_label)) },
-        placeholder = {
-            if (uiState.hasStoredPassword && uiState.password.isBlank()) {
-                Text(stringResource(R.string.sync_password_saved_placeholder))
-            }
-        },
-        visualTransformation = PasswordVisualTransformation(),
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag(CalDavConfigTestTags.PASSWORD_FIELD),
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-        enabled = fieldsEnabled
+        isPasswordVisible = isPasswordVisible,
+        onPasswordVisibilityChange = { isPasswordVisible = !isPasswordVisible },
+        onNext = { focusManager.moveFocus(FocusDirection.Next) }
     )
 
     OutlinedTextField(
@@ -263,6 +278,69 @@ private fun CalDavConfigFields(
             .fillMaxWidth()
             .testTag(CalDavConfigTestTags.LIST_NAME_FIELD),
         singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(
+            onDone = { callbacks.onSaveClicked() }
+        ),
+        enabled = fieldsEnabled
+    )
+}
+
+@Composable
+private fun PasswordField(
+    uiState: CalDavConfigUiState,
+    onValueChange: (String) -> Unit,
+    isPasswordVisible: Boolean,
+    onPasswordVisibilityChange: () -> Unit,
+    onNext: () -> Unit
+) {
+    val fieldsEnabled = !uiState.isSaving && !uiState.isLoading
+
+    OutlinedTextField(
+        value = uiState.password,
+        onValueChange = onValueChange,
+        label = { Text(stringResource(R.string.sync_password_label)) },
+        placeholder = {
+            if (uiState.hasStoredPassword && uiState.password.isBlank()) {
+                Text(stringResource(R.string.sync_password_saved_placeholder))
+            }
+        },
+        visualTransformation = if (isPasswordVisible) {
+            VisualTransformation.None
+        } else {
+            PasswordVisualTransformation()
+        },
+        trailingIcon = {
+            IconButton(
+                onClick = onPasswordVisibilityChange,
+                enabled = fieldsEnabled,
+                modifier = Modifier.testTag(CalDavConfigTestTags.PASSWORD_VISIBILITY_TOGGLE)
+            ) {
+                Icon(
+                    imageVector = if (isPasswordVisible) {
+                        Icons.Rounded.VisibilityOff
+                    } else {
+                        Icons.Rounded.Visibility
+                    },
+                    contentDescription = stringResource(
+                        if (isPasswordVisible) {
+                            R.string.sync_password_hide
+                        } else {
+                            R.string.sync_password_show
+                        }
+                    )
+                )
+            }
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(CalDavConfigTestTags.PASSWORD_FIELD),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Password,
+            imeAction = ImeAction.Next
+        ),
+        keyboardActions = KeyboardActions(onNext = { onNext() }),
         enabled = fieldsEnabled
     )
 }
@@ -282,7 +360,7 @@ private fun CalDavConfigSuccessContent(
         Icon(
             imageVector = Icons.Rounded.CheckCircle,
             contentDescription = stringResource(R.string.caldav_config_success_icon),
-            tint = Color(0xFF4CAF50.toInt()),
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier
                 .size(96.dp)
                 .testTag(CalDavConfigTestTags.SUCCESS_ICON)

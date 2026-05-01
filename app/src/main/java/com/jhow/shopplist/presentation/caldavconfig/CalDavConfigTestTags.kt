@@ -6,6 +6,7 @@ object CalDavConfigTestTags {
     const val SERVER_FIELD = "caldav_config_server"
     const val USERNAME_FIELD = "caldav_config_username"
     const val PASSWORD_FIELD = "caldav_config_password"
+    const val PASSWORD_VISIBILITY_TOGGLE = "caldav_config_password_visibility_toggle"
     const val LIST_NAME_FIELD = "caldav_config_list_name"
     const val SAVE_BUTTON = "caldav_config_save"
     const val PROGRESS_INDICATOR = "caldav_config_progress"
