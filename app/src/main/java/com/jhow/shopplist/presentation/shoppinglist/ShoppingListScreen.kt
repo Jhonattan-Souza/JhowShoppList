@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imeNestedScroll
 import androidx.compose.foundation.layout.imePadding
@@ -45,6 +46,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
@@ -60,7 +62,6 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -68,7 +69,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -81,8 +81,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -136,8 +134,7 @@ private data class ShoppingItemRowInteractions(
 )
 
 private data class ShoppingListContentLayout(
-    val innerPadding: PaddingValues,
-    val inputBarHeight: Dp
+    val innerPadding: PaddingValues
 )
 
 internal fun shoppingListBottomContentPadding(inputBarHeight: Dp): Dp = inputBarHeight
@@ -238,8 +235,6 @@ fun ShoppingListScreen(
     iconResolver: IconResolver
 ) {
     val focusManager = LocalFocusManager.current
-    var inputBarContentHeightPx by remember { mutableIntStateOf(0) }
-    val density = LocalDensity.current
 
     LaunchedEffect(Unit) {
         focusManager.clearFocus(force = true)
@@ -251,25 +246,31 @@ fun ShoppingListScreen(
             .testTag(ShoppingListTestTags.SCREEN),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            ShoppingListTopAppBar(
-                uiState = uiState,
-                itemCallbacks = itemCallbacks,
-                syncCallbacks = syncCallbacks
-            )
+            Column {
+                ShoppingListTopAppBar(
+                    uiState = uiState,
+                    itemCallbacks = itemCallbacks,
+                    syncCallbacks = syncCallbacks
+                )
+                if (uiState.isManualSync) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(2.dp)
+                            .testTag(ShoppingListTestTags.MANUAL_SYNC_PROGRESS_INDICATOR)
+                    )
+                }
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         ShoppingListScreenContent(
             uiState = uiState,
             layout = ShoppingListContentLayout(
-                innerPadding = innerPadding,
-                inputBarHeight = with(density) {
-                    if (inputBarContentHeightPx > 0) inputBarContentHeightPx.toDp() else 0.dp
-                }
+                innerPadding = innerPadding
             ),
             inputCallbacks = inputCallbacks,
             itemCallbacks = itemCallbacks,
-            onInputBarHeightChanged = { inputBarContentHeightPx = it },
             iconResolver = iconResolver
         )
     }
@@ -282,7 +283,6 @@ private fun ShoppingListScreenContent(
     layout: ShoppingListContentLayout,
     inputCallbacks: ShoppingListInputCallbacks,
     itemCallbacks: ShoppingListItemCallbacks,
-    onInputBarHeightChanged: (Int) -> Unit,
     iconResolver: IconResolver
 ) {
     Box(
@@ -297,22 +297,10 @@ private fun ShoppingListScreenContent(
             iconResolver = iconResolver,
             bottomContentPadding = shoppingListBottomContentPadding(layout.inputBarHeight)
         )
-
-        if (uiState.isManualSync) {
-            CircularProgressIndicator(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(bottom = layout.inputBarHeight)
-                    .size(48.dp)
-                    .testTag(ShoppingListTestTags.MANUAL_SYNC_LOADER)
-            )
-        }
-
         ShoppingInputBar(
             value = uiState.inputValue,
             suggestions = uiState.suggestions,
             inputCallbacks = inputCallbacks,
-            onContentHeightChanged = onInputBarHeightChanged,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
@@ -479,7 +467,6 @@ private fun ShoppingInputBar(
     value: String,
     suggestions: List<String>,
     inputCallbacks: ShoppingListInputCallbacks,
-    onContentHeightChanged: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val focusRequester = remember { FocusRequester() }
@@ -500,7 +487,6 @@ private fun ShoppingInputBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surface)
-                .onSizeChanged { onContentHeightChanged(it.height) }
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
             ShoppingInputField(
