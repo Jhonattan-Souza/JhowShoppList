@@ -97,7 +97,7 @@ android {
 
     defaultConfig {
         applicationId = "com.jhow.shopplist"
-        minSdk = 36
+        minSdk = 33
         targetSdk = 36
         versionCode = appVersionCode
         versionName = appVersionName
