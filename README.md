@@ -11,6 +11,7 @@ Android shopping list app built with Kotlin, Jetpack Compose, Room, Hilt, Corout
 
 GitHub Releases is the canonical distribution channel for release APKs.
 
+- Requires Android 13 (API 33) or newer.
 - Fast install: open the releases page above and download the latest signed APK.
 - Obtainium: click the badge above or add `https://github.com/Jhonattan-Souza/JhowShoppList` as a GitHub source to install and receive updates from GitHub Releases.
 - AppVerifier: use the package name below and the SHA-256 fingerprint before installing a downloaded APK.
